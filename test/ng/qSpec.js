@@ -253,7 +253,6 @@ describe('q', function() {
         promise.then(success(), error());
 
         deferred.resolve(deferred2.promise);
-        mockNextTick.flush();
         expect(logStr()).toBe('');
 
         deferred2.resolve('foo');
@@ -806,8 +805,8 @@ describe('q', function() {
             expect(log).toEqual(['successA(RESOLVED_VAL)->a',
                                  'finallyB()->b',
                                  'successC(RESOLVED_VAL)->c',
-                                 'successBB(RESOLVED_VAL)->bb',
                                  'finallyCC()->IGNORED',
+                                 'successBB(RESOLVED_VAL)->bb',
                                  'successCCC(c)->cc',
                                  'successCCCC(cc)->ccc']);
           });
@@ -996,7 +995,6 @@ describe('q', function() {
           function() {
         q.when(deferred.promise, success(), error());
         expect(logStr()).toBe('');
-        mockNextTick.flush();
         expect(logStr()).toBe('');
         syncResolve(deferred, 'hello');
         expect(logStr()).toBe('success(hello)->hello');
@@ -1006,8 +1004,6 @@ describe('q', function() {
       it('should call the errback after the orignal promise is rejected',
           function() {
         q.when(deferred.promise, success(), error());
-        expect(logStr()).toBe('');
-        mockNextTick.flush();
         expect(logStr()).toBe('');
         syncReject(deferred, 'nope');
         expect(logStr()).toBe('error(nope)->reject(nope)');
@@ -1019,7 +1015,6 @@ describe('q', function() {
       it('should call the progressback when the value is a promise and gets notified',
           function() {
         q.when(deferred.promise, success(), error(), progress());
-        mockNextTick.flush();
         expect(logStr()).toBe('');
         syncNotify(deferred, 'notification');
         expect(logStr()).toBe('progress(notification)->notification');
@@ -1063,7 +1058,6 @@ describe('q', function() {
       it('should not require progressback and propagate notification', function() {
         q.when(deferred.promise).
           then(success(), error(), progress());
-        mockNextTick.flush();
         expect(logStr()).toBe('');
         syncNotify(deferred, 'notification');
         expect(logStr()).toBe('progress(notification)->notification');
@@ -1139,7 +1133,6 @@ describe('q', function() {
         };
 
         q.when(evilPromise, success(), error());
-        mockNextTick.flush();
         expect(logStr()).toBe('');
         evilPromise.success('done');
         mockNextTick.flush(); // TODO(i) wrong queue, evil promise would be resolved outside of the
@@ -1165,9 +1158,9 @@ describe('q', function() {
         };
 
         q.when(evilPromise, success(), error());
-        mockNextTick.flush();
         expect(logStr()).toBe('');
         evilPromise.error('failed');
+        mockNextTick.flush();
         expect(logStr()).toBe('error(failed)->reject(failed)');
 
         evilPromise.error('muhaha');
@@ -1187,7 +1180,6 @@ describe('q', function() {
         };
 
         q.when(evilPromise, success(), error(), progress());
-        mockNextTick.flush();
         expect(logStr()).toBe('');
         evilPromise.progress('notification');
         evilPromise.success('ok');

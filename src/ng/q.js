@@ -188,6 +188,23 @@ function $QProvider() {
  */
 function qFactory(nextTick, exceptionHandler) {
 
+
+  function callOnce(elements) {
+    var called = false, result = [];
+    function wrap(fn) {
+      return function(value) {
+        if (called) return;
+        called = true;
+        fn(value);
+      };
+    }
+    
+    for (var i = 0; i < elements.length; ++i) {
+      result.push(wrap(elements[i]));
+    }
+    return result;
+  }
+
   /**
    * @ngdoc
    * @name ng.$q#defer
@@ -199,96 +216,100 @@ function qFactory(nextTick, exceptionHandler) {
    */
   var defer = function() {
     var pending = [],
-        value, deferred;
+        value,
+        status = 0,
+        deferred,
+        processScheduled = false;
+
+    function processQueue() {
+      var fn;
+
+      processScheduled = false;
+      if (!status) return;
+      for (var i = 0; i < pending.length; ++i) {
+        fn = pending[i][status - 1];
+        fn(value);
+      }
+      pending = [];
+    }
+
+    function scheduleProcessQueue() {
+      if (processScheduled) return;
+      processScheduled = true;
+      nextTick(processQueue);
+    }
+
+    function resolve(val) {
+      var then, fns;
+
+      if (status) return;
+      fns = callOnce([resolve, reject]);
+      if (val === deferred.promise) throw new TypeError('Cycle detected');
+      try {
+        then = val && val.then;
+        if ((isObject(val) || isFunction(val)) && isFunction(then)) {
+          then.call(val, fns[0], fns[1], deferred.notify);
+        } else {
+          value = val;
+          status = 1;
+          scheduleProcessQueue();
+        }
+      } catch(e) {
+        fns[1](e);
+        exceptionHandler(e);
+      }
+    }
+
+    function reject(reason) {
+      if (status) return;
+      value = reason;
+      status = 2;
+      scheduleProcessQueue();
+    }
 
     deferred = {
-
-      resolve: function(val) {
-        if (pending) {
-          var callbacks = pending;
-          pending = undefined;
-          value = ref(val);
-
-          if (callbacks.length) {
-            nextTick(function() {
-              var callback;
-              for (var i = 0, ii = callbacks.length; i < ii; i++) {
-                callback = callbacks[i];
-                value.then(callback[0], callback[1], callback[2]);
-              }
-            });
-          }
-        }
-      },
-
-
-      reject: function(reason) {
-        deferred.resolve(reject(reason));
-      },
-
-
-      notify: function(progress) {
-        if (pending) {
-          var callbacks = pending;
-
-          if (pending.length) {
-            nextTick(function() {
-              var callback;
-              for (var i = 0, ii = callbacks.length; i < ii; i++) {
-                callback = callbacks[i];
-                callback[2](progress);
-              }
-            });
-          }
-        }
-      },
-
-
       promise: {
-        then: function(callback, errback, progressback) {
+        then: function(onFulfilled, onRejected, progressback) {
           var result = defer();
-
-          var wrappedCallback = function(value) {
-            try {
-              result.resolve((isFunction(callback) ? callback : defaultCallback)(value));
-            } catch(e) {
-              result.reject(e);
-              exceptionHandler(e);
+          pending.push([
+            function(val) {
+              try {
+                result.resolve(isFunction(onFulfilled) ? onFulfilled(val) : val);
+              } catch(e) {
+                result.reject(e);
+                exceptionHandler(e);
+              }
+            },
+            function(reason) {
+              try {
+                if (isFunction(onRejected)) {
+                  result.resolve(onRejected(reason));
+                } else {
+                  result.reject(reason);
+                }
+              } catch(e) {
+                result.reject(e);
+                exceptionHandler(e);
+              }
+            },
+            function(progress) {
+              try {
+                result.notify(isFunction(progressback) ? progressback(progress) : progress);
+              } catch(e) {
+                exceptionHandler(e);
+              }
             }
-          };
-
-          var wrappedErrback = function(reason) {
-            try {
-              result.resolve((isFunction(errback) ? errback : defaultErrback)(reason));
-            } catch(e) {
-              result.reject(e);
-              exceptionHandler(e);
-            }
-          };
-
-          var wrappedProgressback = function(progress) {
-            try {
-              result.notify((isFunction(progressback) ? progressback : defaultCallback)(progress));
-            } catch(e) {
-              exceptionHandler(e);
-            }
-          };
-
-          if (pending) {
-            pending.push([wrappedCallback, wrappedErrback, wrappedProgressback]);
-          } else {
-            value.then(wrappedCallback, wrappedErrback, wrappedProgressback);
-          }
+          ]);
+          if (status) scheduleProcessQueue();
 
           return result.promise;
         },
 
         "catch": function(callback) {
-          return this.then(null, callback);
+          return deferred.promise.then(null, callback);
         },
 
-        "finally": function(callback) {
-
+        "finally": function(callback, progressback) {
           function makePromise(value, resolved) {
             var result = defer();
             if (resolved) {
@@ -302,7 +323,7 @@ function qFactory(nextTick, exceptionHandler) {
           function handleCallback(value, isResolved) {
             var callbackOutput = null;
             try {
-              callbackOutput = (callback ||defaultCallback)();
+              if (isFunction(callback)) callbackOutput = callback();
             } catch(e) {
               return makePromise(e, false);
             }
@@ -321,6 +342,21 @@ function qFactory(nextTick, exceptionHandler) {
             return handleCallback(value, true);
           }, function(error) {
             return handleCallback(error, false);
+          }, progressback);
+        }
+      },
+      resolve: resolve,
+      reject: reject,
+      notify: function(progress) {
+        var callbacks = pending;
+
+        if (!status && callbacks.length) {
+          nextTick(function() {
+            var callback;
+            for (var i = 0, ii = callbacks.length; i < ii; i++) {
+              callback = callbacks[i][2];
+              callback(progress);
+            }
           });
         }
       }
@@ -328,21 +364,6 @@ function qFactory(nextTick, exceptionHandler) {
 
     return deferred;
   };
-
-
-  var ref = function(value) {
-    if (value && isFunction(value.then)) return value;
-    return {
-      then: function(callback) {
-        var result = defer();
-        nextTick(function() {
-          result.resolve(callback(value));
-        });
-        return result.promise;
-      }
-    };
-  };
-
 
   /**
    * @ngdoc
@@ -380,22 +401,10 @@ function qFactory(nextTick, exceptionHandler) {
    * @returns {Promise} Returns a promise that was already resolved as rejected with the `reason`.
    */
   var reject = function(reason) {
-    return {
-      then: function(callback, errback) {
-        var result = defer();
-        nextTick(function() {
-          try {
-            result.resolve((isFunction(errback) ? errback : defaultErrback)(reason));
-          } catch(e) {
-            result.reject(e);
-            exceptionHandler(e);
-          }
-        });
-        return result.promise;
-      }
-    };
+    var result = defer();
+    result.reject(reason);
+    return result.promise;
   };
-
 
   /**
    * @ngdoc
@@ -410,63 +419,10 @@ function qFactory(nextTick, exceptionHandler) {
    * @returns {Promise} Returns a promise of the passed value or promise
    */
   var when = function(value, callback, errback, progressback) {
-    var result = defer(),
-        done;
-
-    var wrappedCallback = function(value) {
-      try {
-        return (isFunction(callback) ? callback : defaultCallback)(value);
-      } catch (e) {
-        exceptionHandler(e);
-        return reject(e);
-      }
-    };
-
-    var wrappedErrback = function(reason) {
-      try {
-        return (isFunction(errback) ? errback : defaultErrback)(reason);
-      } catch (e) {
-        exceptionHandler(e);
-        return reject(e);
-      }
-    };
-
-    var wrappedProgressback = function(progress) {
-      try {
-        return (isFunction(progressback) ? progressback : defaultCallback)(progress);
-      } catch (e) {
-        exceptionHandler(e);
-      }
-    };
-
-    nextTick(function() {
-      ref(value).then(function(value) {
-        if (done) return;
-        done = true;
-        result.resolve(ref(value).then(wrappedCallback, wrappedErrback, wrappedProgressback));
-      }, function(reason) {
-        if (done) return;
-        done = true;
-        result.resolve(wrappedErrback(reason));
-      }, function(progress) {
-        if (done) return;
-        result.notify(wrappedProgressback(progress));
-      });
-    });
-
-    return result.promise;
+    var result = defer();
+    result.resolve(value);
+    return result.promise.then(callback, errback, progressback);
   };
-
-
-  function defaultCallback(value) {
-    return value;
-  }
-
-
-  function defaultErrback(reason) {
-    return reject(reason);
-  }
-
 
   /**
    * @ngdoc
@@ -482,14 +438,14 @@ function qFactory(nextTick, exceptionHandler) {
    *   If any of the promises is resolved with a rejection, this resulting promise will be rejected
    *   with the same rejection value.
    */
-  function all(promises) {
+  var all = function(promises) {
     var deferred = defer(),
         counter = 0,
         results = isArray(promises) ? [] : {};
 
     forEach(promises, function(promise, key) {
       counter++;
-      ref(promise).then(function(value) {
+      when(promise).then(function(value) {
         if (results.hasOwnProperty(key)) return;
         results[key] = value;
         if (!(--counter)) deferred.resolve(results);
@@ -504,7 +460,7 @@ function qFactory(nextTick, exceptionHandler) {
     }
 
     return deferred.promise;
-  }
+  };
 
   return {
     defer: defer,
