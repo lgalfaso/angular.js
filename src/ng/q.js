@@ -189,8 +189,8 @@ function $QProvider() {
 function qFactory(nextTick, exceptionHandler) {
 
 
-  function callOnce(elements) {
-    var called = false, result = [];
+  function callOnce(resolveFn, rejectFn) {
+    var called = false;
     function wrap(fn) {
       return function(value) {
         if (called) return;
@@ -199,10 +199,7 @@ function qFactory(nextTick, exceptionHandler) {
       };
     }
     
-    for (var i = 0; i < elements.length; ++i) {
-      result.push(wrap(elements[i]));
-    }
-    return result;
+    return [wrap(resolveFn), wrap(rejectFn)];
   }
 
   /**
@@ -222,13 +219,25 @@ function qFactory(nextTick, exceptionHandler) {
         processScheduled = false;
 
     function processQueue() {
-      var fn;
+      var fn, promise;
 
       processScheduled = false;
       if (!status) return;
       for (var i = 0; i < pending.length; ++i) {
-        fn = pending[i][status - 1];
-        fn(value);
+        promise = pending[i][0];
+        fn = pending[i][status];
+        try {
+          if (isFunction(fn)) {
+            promise.resolve(fn(value));
+          } else if (status === 1) {
+            promise.resolve(value);
+          } else {
+            promise.reject(value);
+          }
+        } catch(e) {
+          promise.reject(e);
+          exceptionHandler(e);
+        }
       }
       pending = [];
     }
@@ -243,11 +252,11 @@ function qFactory(nextTick, exceptionHandler) {
       var then, fns;
 
       if (status) return;
-      fns = callOnce([resolve, reject]);
       if (val === deferred.promise) throw new TypeError('Cycle detected');
+      fns = callOnce(resolve, reject);
       try {
-        then = val && val.then;
-        if ((isObject(val) || isFunction(val)) && isFunction(then)) {
+        if ((isObject(val) || isFunction(val))) then = val && val.then;
+        if (isFunction(then)) {
           then.call(val, fns[0], fns[1], deferred.notify);
         } else {
           value = val;
@@ -269,37 +278,10 @@ function qFactory(nextTick, exceptionHandler) {
 
     deferred = {
       promise: {
-        then: function(onFulfilled, onRejected, progressback) {
+        then: function(onFulfilled, onRejected, progressBack) {
           var result = defer();
-          pending.push([
-            function(val) {
-              try {
-                result.resolve(isFunction(onFulfilled) ? onFulfilled(val) : val);
-              } catch(e) {
-                result.reject(e);
-                exceptionHandler(e);
-              }
-            },
-            function(reason) {
-              try {
-                if (isFunction(onRejected)) {
-                  result.resolve(onRejected(reason));
-                } else {
-                  result.reject(reason);
-                }
-              } catch(e) {
-                result.reject(e);
-                exceptionHandler(e);
-              }
-            },
-            function(progress) {
-              try {
-                result.notify(isFunction(progressback) ? progressback(progress) : progress);
-              } catch(e) {
-                exceptionHandler(e);
-              }
-            }
-          ]);
+
+          pending.push([result, onFulfilled, onRejected, progressBack]);
           if (status) scheduleProcessQueue();
 
           return result.promise;
@@ -309,7 +291,7 @@ function qFactory(nextTick, exceptionHandler) {
           return deferred.promise.then(null, callback);
         },
 
-        "finally": function(callback, progressback) {
+        "finally": function(callback, progressBack) {
           function makePromise(value, resolved) {
             var result = defer();
             if (resolved) {
@@ -342,7 +324,7 @@ function qFactory(nextTick, exceptionHandler) {
             return handleCallback(value, true);
           }, function(error) {
             return handleCallback(error, false);
-          }, progressback);
+          }, progressBack);
         }
       },
       resolve: resolve,
@@ -352,10 +334,15 @@ function qFactory(nextTick, exceptionHandler) {
 
         if (!status && callbacks.length) {
           nextTick(function() {
-            var callback;
+            var callback, result;
             for (var i = 0, ii = callbacks.length; i < ii; i++) {
-              callback = callbacks[i][2];
-              callback(progress);
+              result = callbacks[i][0];
+              callback = callbacks[i][3];
+              try {
+                result.notify(isFunction(callback) ? callback(progress) : progress);
+              } catch(e) {
+                exceptionHandler(e);
+              }
             }
           });
         }
@@ -418,10 +405,10 @@ function qFactory(nextTick, exceptionHandler) {
    * @param {*} value Value or a promise
    * @returns {Promise} Returns a promise of the passed value or promise
    */
-  var when = function(value, callback, errback, progressback) {
+  var when = function(value, callback, errback, progressBack) {
     var result = defer();
     result.resolve(value);
-    return result.promise.then(callback, errback, progressback);
+    return result.promise.then(callback, errback, progressBack);
   };
 
   /**
