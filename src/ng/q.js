@@ -202,6 +202,148 @@ function qFactory(nextTick, exceptionHandler) {
     return [wrap(resolveFn), wrap(rejectFn)];
   }
 
+  function makePromise(value, resolved) {
+    var result = defer();
+    if (resolved) {
+      result.resolve(value);
+    } else {
+      result.reject(value);
+    }
+    return result.promise;
+  }
+
+  function handleCallback(value, isResolved, callback) {
+    var callbackOutput = null;
+    try {
+      if (isFunction(callback)) callbackOutput = callback();
+    } catch(e) {
+      return makePromise(e, false);
+    }
+    if (callbackOutput && isFunction(callbackOutput.then)) {
+      return callbackOutput.then(function() {
+        return makePromise(value, isResolved);
+      }, function(error) {
+        return makePromise(error, false);
+      });
+    } else {
+      return makePromise(value, isResolved);
+    }
+  }
+
+
+  function processQueue(state) {
+    var fn, promise;
+
+    state.processScheduled = false;
+    if (!state.status) return;
+    for (var i = 0; i < state.pending.length; ++i) {
+      promise = state.pending[i][0];
+      fn = state.pending[i][state.status];
+      try {
+        if (isFunction(fn)) {
+          promise.resolve(fn(state.value));
+        } else if (state.status === 1) {
+          promise.resolve(state.value);
+        } else {
+          promise.reject(state.value);
+        }
+      } catch(e) {
+        promise.reject(e);
+        exceptionHandler(e);
+      }
+    }
+    state.pending = [];
+  }
+
+  function scheduleProcessQueue(state) {
+    if (state.processScheduled) return;
+    state.processScheduled = true;
+    nextTick(function() { processQueue(state); });
+  }
+
+  function Promise(state) {
+    this.$$state = state;
+  }
+
+  Promise.prototype.then = function(onFulfilled, onRejected, progressBack) {
+    var result = defer();
+
+    this.$$state.pending.push([result, onFulfilled, onRejected, progressBack]);
+    if (this.$$state.status) scheduleProcessQueue(this.$$state);
+
+    return result.promise;
+  };
+
+  Promise.prototype["catch"] = function(callback) {
+    return this.then(null, callback);
+  };
+
+  Promise.prototype["finally"] = function(callback, progressBack) {
+    return this.then(function(value) {
+        return handleCallback(value, true, callback);
+      }, function(error) {
+        return handleCallback(error, false, callback);
+      }, progressBack);
+  };
+
+
+  function Defer() {
+    this.$$state = {
+      pending: [],
+      status: 0,
+      value: undefined,
+      processScheduled: false
+    };
+    this.promise = new Promise(this.$$state);
+  }
+
+  Defer.prototype.resolve = function(val) {
+    var then, fns;
+
+    if (this.$$state.status) return;
+    if (val === this.promise) throw new TypeError('Cycle detected');
+    fns = callOnce(this.resolve, this.reject);
+    try {
+      if ((isObject(val) || isFunction(val))) then = val && val.then;
+      if (isFunction(then)) {
+        then.call(val, fns[0], fns[1], this.notify);
+      } else {
+        this.$$state.value = val;
+        this.$$state.status = 1;
+        scheduleProcessQueue(this.$$state);
+      }
+    } catch(e) {
+      fns[1](e);
+      exceptionHandler(e);
+    }
+  };
+
+  Defer.prototype.reject = function(reason) {
+    if (this.$$state.status) return;
+    this.$$state.value = reason;
+    this.$$state.status = 2;
+    scheduleProcessQueue(this.$$state);
+  };
+
+  Defer.prototype.notify = function(progress) {
+    var callbacks = this.$$state.pending;
+
+    if (!this.$$state.status && callbacks.length) {
+      nextTick(function() {
+        var callback, result;
+        for (var i = 0, ii = callbacks.length; i < ii; i++) {
+          result = callbacks[i][0];
+          callback = callbacks[i][3];
+          try {
+            result.notify(isFunction(callback) ? callback(progress) : progress);
+          } catch(e) {
+            exceptionHandler(e);
+          }
+        }
+      });
+    }
+  };
+
   /**
    * @ngdoc
    * @name ng.$q#defer
@@ -212,144 +354,14 @@ function qFactory(nextTick, exceptionHandler) {
    * @returns {Deferred} Returns a new instance of deferred.
    */
   var defer = function() {
-    var pending = [],
-        value,
-        status = 0,
-        deferred,
-        processScheduled = false;
 
-    function processQueue() {
-      var fn, promise;
+    var result = new Defer();
+    result.resolve = bind(result, result.resolve);
+    result.reject = bind(result, result.reject);
+    result.notify = bind(result, result.notify);
+    result.promise = new Promise(result.$$state);
 
-      processScheduled = false;
-      if (!status) return;
-      for (var i = 0; i < pending.length; ++i) {
-        promise = pending[i][0];
-        fn = pending[i][status];
-        try {
-          if (isFunction(fn)) {
-            promise.resolve(fn(value));
-          } else if (status === 1) {
-            promise.resolve(value);
-          } else {
-            promise.reject(value);
-          }
-        } catch(e) {
-          promise.reject(e);
-          exceptionHandler(e);
-        }
-      }
-      pending = [];
-    }
-
-    function scheduleProcessQueue() {
-      if (processScheduled) return;
-      processScheduled = true;
-      nextTick(processQueue);
-    }
-
-    function resolve(val) {
-      var then, fns;
-
-      if (status) return;
-      if (val === deferred.promise) throw new TypeError('Cycle detected');
-      fns = callOnce(resolve, reject);
-      try {
-        if ((isObject(val) || isFunction(val))) then = val && val.then;
-        if (isFunction(then)) {
-          then.call(val, fns[0], fns[1], deferred.notify);
-        } else {
-          value = val;
-          status = 1;
-          scheduleProcessQueue();
-        }
-      } catch(e) {
-        fns[1](e);
-        exceptionHandler(e);
-      }
-    }
-
-    function reject(reason) {
-      if (status) return;
-      value = reason;
-      status = 2;
-      scheduleProcessQueue();
-    }
-
-    deferred = {
-      promise: {
-        then: function(onFulfilled, onRejected, progressBack) {
-          var result = defer();
-
-          pending.push([result, onFulfilled, onRejected, progressBack]);
-          if (status) scheduleProcessQueue();
-
-          return result.promise;
-        },
-
-        "catch": function(callback) {
-          return deferred.promise.then(null, callback);
-        },
-
-        "finally": function(callback, progressBack) {
-          function makePromise(value, resolved) {
-            var result = defer();
-            if (resolved) {
-              result.resolve(value);
-            } else {
-              result.reject(value);
-            }
-            return result.promise;
-          }
-
-          function handleCallback(value, isResolved) {
-            var callbackOutput = null;
-            try {
-              if (isFunction(callback)) callbackOutput = callback();
-            } catch(e) {
-              return makePromise(e, false);
-            }
-            if (callbackOutput && isFunction(callbackOutput.then)) {
-              return callbackOutput.then(function() {
-                return makePromise(value, isResolved);
-              }, function(error) {
-                return makePromise(error, false);
-              });
-            } else {
-              return makePromise(value, isResolved);
-            }
-          }
-
-          return this.then(function(value) {
-            return handleCallback(value, true);
-          }, function(error) {
-            return handleCallback(error, false);
-          }, progressBack);
-        }
-      },
-      resolve: resolve,
-      reject: reject,
-      notify: function(progress) {
-        var callbacks = pending;
-
-        if (!status && callbacks.length) {
-          nextTick(function() {
-            var callback, result;
-            for (var i = 0, ii = callbacks.length; i < ii; i++) {
-              result = callbacks[i][0];
-              callback = callbacks[i][3];
-              try {
-                result.notify(isFunction(callback) ? callback(progress) : progress);
-              } catch(e) {
-                exceptionHandler(e);
-              }
-            }
-          });
-        }
-      }
-    };
-
-    return deferred;
+    return result;
   };
 
   /**
