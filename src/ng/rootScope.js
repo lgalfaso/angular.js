@@ -124,7 +124,7 @@ function $RootScopeProvider(){
      */
     function Scope() {
       this.$id = nextUid();
-      this.$$phase = this.$parent = this.$$watchers =
+      this.$$phase = this.$parent =
                      this.$$nextSibling = this.$$prevSibling =
                      this.$$childHead = this.$$childTail = null;
       this['this'] = this.$root =  this;
@@ -134,6 +134,7 @@ function $RootScopeProvider(){
       this.$$listeners = {};
       this.$$listenerCount = {};
       this.$$isolateBindings = {};
+      this.$$watchHead = this.$$watchTail = this.$$watchGroupTail = {next: null, prev: null, dummy: true};
     }
 
     /**
@@ -185,8 +186,7 @@ function $RootScopeProvider(){
           // but cache it to allow the VM to optimize lookups.
           if (!this.$$childScopeClass) {
             this.$$childScopeClass = function() {
-              this.$$watchers = this.$$nextSibling =
-                  this.$$childHead = this.$$childTail = null;
+              this.$$nextSibling = this.$$childHead = this.$$childTail = null;
               this.$$listeners = {};
               this.$$listenerCount = {};
               this.$id = nextUid();
@@ -204,6 +204,18 @@ function $RootScopeProvider(){
           this.$$childTail = child;
         } else {
           this.$$childHead = this.$$childTail = child;
+        }
+
+        child.$$watchHead = child.$$watchTail = child.$$watchGroupTail = {next: null, prev: null, dummy: true};
+        var previousWatch = this.$$watchGroupTail;
+        child.$$watchHead.prev = previousWatch;
+        child.$$watchHead.next = previousWatch.next;
+        previousWatch.next = child.$$watchHead;
+        if (child.$$watchHead.next) child.$$watchHead.next.prev = child.$$watchHead;
+        var scope = this;
+        while(scope && scope.$$watchGroupTail === child.$$watchGroupTail.prev) {
+          scope.$$watchGroupTail = child.$$watchGroupTail;
+          scope = scope.$parent;
         }
         return child;
       },
@@ -321,13 +333,13 @@ function $RootScopeProvider(){
       $watch: function(watchExp, listener, objectEquality) {
         var scope = this,
             get = compileToFn(watchExp, 'watch'),
-            array = scope.$$watchers,
             watcher = {
               fn: listener,
               last: initWatchVal,
               get: get,
               exp: watchExp,
-              eq: !!objectEquality
+              eq: !!objectEquality,
+              scope: scope
             };
 
         lastDirtyWatch = null;
@@ -342,19 +354,23 @@ function $RootScopeProvider(){
           var originalFn = watcher.fn;
           watcher.fn = function(newVal, oldVal, scope) {
             originalFn.call(this, newVal, oldVal, scope);
-            arrayRemove(array, watcher);
+            watcher.toRemove = true;
           };
         }
 
-        if (!array) {
-          array = scope.$$watchers = [];
+        watcher.prev = this.$$watchTail;
+        watcher.next = this.$$watchTail.next;
+        this.$$watchTail.next = watcher;
+        if (watcher.next) watcher.next.prev = watcher;
+        this.$$watchTail = watcher;
+        scope = this;
+        while(scope && scope.$$watchGroupTail === watcher.prev) {
+          scope.$$watchGroupTail = watcher;
+          scope = scope.$parent;
         }
-        // we use unshift since we use a while loop in $digest for speed.
-        // the while loop reads in reverse order.
-        array.unshift(watcher);
 
         return function deregisterWatch() {
-          arrayRemove(array, watcher);
+          watcher.toRemove = true;
           lastDirtyWatch = null;
         };
       },
@@ -636,14 +652,11 @@ function $RootScopeProvider(){
        *
        */
       $digest: function() {
-        var watch, value, last,
-            watchers,
+        var value, last,
             asyncQueue = this.$$asyncQueue,
             postDigestQueue = this.$$postDigestQueue,
-            length,
             dirty, ttl = TTL,
-            next, current, target = this,
-            watchLog = [],
+            watchLog = [], currentWatcher,
             logIdx, logMsg, asyncTask;
 
         beginPhase('$digest');
@@ -652,7 +665,6 @@ function $RootScopeProvider(){
 
         do { // "while dirty" loop
           dirty = false;
-          current = target;
 
           while(asyncQueue.length) {
             try {
@@ -665,61 +677,44 @@ function $RootScopeProvider(){
             lastDirtyWatch = null;
           }
 
-          traverseScopesLoop:
-          do { // "traverse the scopes" loop
-            if ((watchers = current.$$watchers)) {
-              // process our watches
-              length = watchers.length;
-              while (length--) {
-                try {
-                  watch = watchers[length];
-                  // Most common watches are on primitives, in which case we can short
-                  // circuit it with === operator, only when === fails do we use .equals
-                  if (watch) {
-                    if ((value = watch.get(current)) !== (last = watch.last) &&
-                        !(watch.eq
-                            ? equals(value, last)
-                            : (typeof value == 'number' && typeof last == 'number'
-                               && isNaN(value) && isNaN(last)))) {
-                      dirty = true;
-                      lastDirtyWatch = watch;
-                      watch.last = watch.eq ? copy(value) : value;
-                      watch.fn(value, ((last === initWatchVal) ? value : last), current);
-                      if (ttl < 5) {
-                        logIdx = 4 - ttl;
-                        if (!watchLog[logIdx]) watchLog[logIdx] = [];
-                        logMsg = (isFunction(watch.exp))
-                            ? 'fn: ' + (watch.exp.name || watch.exp.toString())
-                            : watch.exp;
-                        logMsg += '; newVal: ' + toJson(value) + '; oldVal: ' + toJson(last);
-                        watchLog[logIdx].push(logMsg);
-                      }
-                    } else if (watch === lastDirtyWatch) {
-                      // If the most recently dirty watcher is now clean, short circuit since the remaining watchers
-                      // have already been tested.
-                      dirty = false;
-                      break traverseScopesLoop;
-                    }
+          for (currentWatcher = this.$$watchHead;
+            this.$$watchGroupTail.next !== currentWatcher;
+            currentWatcher = currentWatcher.next) {
+            try {
+              if (currentWatcher.toRemove) {
+                removeWatchers(currentWatcher.scope, currentWatcher, currentWatcher);
+              } else if (!currentWatcher.dummy) {
+                // Most common watches are on primitives, in which case we can short
+                // circuit it with === operator, only when === fails do we use .equals
+                if ((value = currentWatcher.get(currentWatcher.scope)) !== (last = currentWatcher.last) && !(currentWatcher.eq
+                  ? equals(value, last)
+                  : (typeof value == 'number' && typeof last == 'number'
+                  && isNaN(value) && isNaN(last)))) {
+                  dirty = true;
+                  lastDirtyWatch = currentWatcher;
+                  currentWatcher.last = currentWatcher.eq ? copy(value) : value;
+                  currentWatcher.fn(value, ((last === initWatchVal) ? value : last), currentWatcher.scope);
+                  if (ttl < 5) {
+                    logIdx = 4 - ttl;
+                    if (!watchLog[logIdx]) watchLog[logIdx] = [];
+                    logMsg = (isFunction(currentWatcher.exp))
+                      ? 'fn: ' + (currentWatcher.exp.name || currentWatcher.exp.toString())
+                      : currentWatcher.exp;
+                    logMsg += '; newVal: ' + toJson(value) + '; oldVal: ' + toJson(last);
+                    watchLog[logIdx].push(logMsg);
                   }
-                } catch (e) {
-                  clearPhase();
-                  $exceptionHandler(e);
+                } else if (currentWatcher === lastDirtyWatch) {
+                  // If the most recently dirty watcher is now clean, short circuit since the remaining watchers
+                  // have already been tested.
+                  dirty = false;
+                  break;
                 }
               }
+            } catch (e) {
+              clearPhase();
+              $exceptionHandler(e);
             }
-
-            // Insanity Warning: scope depth-first traversal
-            // yes, this code is a bit crazy, but it works and we have tests to prove it!
-            // this piece should be kept in sync with the traversal in $broadcast
-            if (!(next = (current.$$childHead ||
-                (current !== target && current.$$nextSibling)))) {
-              while(current !== target && !(next = current.$$nextSibling)) {
-                current = current.$parent;
-              }
-            }
-          } while ((current = next));
-
-          // `break traverseScopesLoop;` takes us to here
+          }
 
           if((dirty || asyncQueue.length) && !(ttl--)) {
             clearPhase();
@@ -786,6 +781,7 @@ function $RootScopeProvider(){
         this.$$destroyed = true;
         if (this === $rootScope) return;
 
+        removeWatchers(this, this.$$watchHead, this.$$watchGroupTail);
         forEach(this.$$listenerCount, bind(null, decrementListenerCount, this));
 
         // sever all the references to parent scopes (after this cleanup, the current scope should
@@ -809,7 +805,7 @@ function $RootScopeProvider(){
 
         // don't reset these to null in case some async task tries to register a listener/watch/task
         this.$$listeners = {};
-        this.$$watchers = this.$$asyncQueue = this.$$postDigestQueue = [];
+        this.$$asyncQueue = this.$$postDigestQueue = [];
 
         // prevent NPEs since these methods have references to properties we nulled out
         this.$destroy = this.$digest = this.$apply = noop;
@@ -1177,6 +1173,16 @@ function $RootScopeProvider(){
           delete current.$$listenerCount[name];
         }
       } while ((current = current.$parent));
+    }
+
+    function removeWatchers(scope, head, tail) {
+      if (head.prev) head.prev.next = tail.next;
+      if (tail.next) tail.next.prev = head.prev;
+      if (scope.$$watchTail === tail) scope.$$watchTail = tail.prev;
+      while (scope && scope.$$watchGroupTail === tail) {
+        scope.$$watchGroupTail = head.prev;
+        scope = scope.$parent;
+      }
     }
 
     /**

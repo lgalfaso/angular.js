@@ -107,10 +107,10 @@ describe('Scope', function() {
 
     it('should not keep constant expressions on watch queue', inject(function($rootScope) {
       $rootScope.$watch('1 + 1', function() {});
-      expect($rootScope.$$watchers.length).toEqual(1);
+      expect($rootScope.$$watchHead).not.toEqual($rootScope.$$watchTail);
       $rootScope.$digest();
 
-      expect($rootScope.$$watchers.length).toEqual(0);
+      expect($rootScope.$$watchHead).toEqual($rootScope.$$watchTail);
     }));
 
 
@@ -460,7 +460,7 @@ describe('Scope', function() {
 
         $rootScope.$digest();
 
-        expect(log).toEqual(['watch1', 'watchAction1', 'watch1', 'watch3', 'watchAction3',
+        expect(log).toEqual(['watch1', 'watchAction1', 'watch3', 'watchAction3',
                              'watch1', 'watch3']);
         scope.$destroy();
         log.reset();
@@ -736,8 +736,7 @@ describe('Scope', function() {
           $rootScope.$watch(log.fn('w5'), log.fn('w5action'));
         });
         $rootScope.$digest();
-        expect(log).toEqual(['w1', 'w2', 'w3', 'w4', 'w4action',
-                             'w1', 'w2', 'w3', 'w4', 'w5', 'w5action',
+        expect(log).toEqual(['w1', 'w2', 'w3', 'w4', 'w4action', 'w5', 'w5action',
                              'w1', 'w2', 'w3', 'w4', 'w5']);
       }));
 
