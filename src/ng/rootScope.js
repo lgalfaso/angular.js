@@ -346,6 +346,13 @@ function $RootScopeProvider(){
           watcher.fn = function(newVal, oldVal, scope) {listenFn(scope);};
         }
 
+        if (watchExp.$$interpolate) {
+          return this.$watchGroup(watchExp.expressionFns,
+            function(newValues, oldValues, scope) {
+              listener(watchExp.compute(newValues), watchExp.compute(oldValues), scope);
+            });
+        }
+
         if (!array) {
           array = scope.$$watchers = [];
         }

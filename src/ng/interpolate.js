@@ -191,6 +191,7 @@ function $InterpolateProvider() {
           separators = [],
           expressions = [],
           parseFns = [],
+          stringifiedFns = [],
           textLength = text.length,
           hasInterpolation = false,
           hasText = false,
@@ -217,6 +218,18 @@ function $InterpolateProvider() {
           break;
         }
       }
+
+      forEach(parseFns, function(fn) {
+        stringifiedFns.push(
+          function fnWrap(context) {
+            var value = getValue(fn(context));
+            if (allOrNothing && isUndefined(value)) {
+              return;
+            }
+            fnWrap.$$unwatch = fn.$$unwatch;
+            return stringify(value);
+          }); 
+      });
 
       forEach(separators, function(key, i) {
         separators[i] = separators[i].
@@ -246,6 +259,9 @@ function $InterpolateProvider() {
 
         var compute = function(values) {
           for(var i = 0, ii = expressions.length; i < ii; i++) {
+            if (allOrNothing && isUndefined(values[i])) {
+              return;
+            }
             concat[2*i] = separators[i];
             concat[(2*i)+1] = values[i];
           }
@@ -339,7 +355,10 @@ function $InterpolateProvider() {
           // all of these properties are undocumented for now
           exp: text, //just for compatibility with regular watchers created via $watch
           separators: separators,
-          expressions: expressions
+          expressions: expressions,
+          expressionFns: stringifiedFns,
+          compute: compute,
+          $$interpolate: true
         });
       }
     }
