@@ -415,6 +415,7 @@ function $RootScopeProvider(){
 
         deregisterFns.push(self.$watch(watchGroupFn, function () {
           listener(newValues, oldValues, self);
+          oldValues = newValues.slice();
           if (unwatchCount === 0) {
             watchGroupFn.$$unwatch = true;
           } else {

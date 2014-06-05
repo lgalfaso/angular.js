@@ -222,12 +222,18 @@ function $InterpolateProvider() {
       forEach(parseFns, function(fn) {
         stringifiedFns.push(
           function fnWrap(context) {
-            var value = getValue(fn(context));
-            if (allOrNothing && isUndefined(value)) {
-              return;
+            try {
+              var value = getValue(fn(context));
+              if (allOrNothing && isUndefined(value)) {
+                return;
+              }
+              fnWrap.$$unwatch = fn.$$unwatch;
+              return stringify(value);
+            } catch(err) {
+              var newErr = $interpolateMinErr('interr', "Can't interpolate: {0}\n{1}", text,
+                  err.toString());
+              $exceptionHandler(newErr);
             }
-            fnWrap.$$unwatch = fn.$$unwatch;
-            return stringify(value);
           }); 
       });
 
