@@ -236,7 +236,7 @@ function qFactory(nextTick, exceptionHandler) {
 
     state.processScheduled = false;
     if (!state.status) return;
-    for (var i = 0; i < state.pending.length; ++i) {
+    for (var i = 0; state.pending && i < state.pending.length; ++i) {
       promise = state.pending[i][0];
       fn = state.pending[i][state.status];
       try {
@@ -252,7 +252,7 @@ function qFactory(nextTick, exceptionHandler) {
         exceptionHandler(e);
       }
     }
-    state.pending = [];
+    state.pending = undefined;
   }
 
   function scheduleProcessQueue(state) {
@@ -268,6 +268,7 @@ function qFactory(nextTick, exceptionHandler) {
   Promise.prototype.then = function(onFulfilled, onRejected, progressBack) {
     var result = defer();
 
+    this.$$state.pending = this.$$state.pending || [];
     this.$$state.pending.push([result, onFulfilled, onRejected, progressBack]);
     if (this.$$state.status) scheduleProcessQueue(this.$$state);
 
@@ -288,12 +289,7 @@ function qFactory(nextTick, exceptionHandler) {
 
 
   function Defer() {
-    this.$$state = {
-      pending: [],
-      status: 0,
-      value: undefined,
-      processScheduled: false
-    };
+    this.$$state = {};
     this.promise = new Promise(this.$$state);
   }
 
@@ -328,7 +324,7 @@ function qFactory(nextTick, exceptionHandler) {
   Defer.prototype.notify = function(progress) {
     var callbacks = this.$$state.pending;
 
-    if (!this.$$state.status && callbacks.length) {
+    if (!this.$$state.status && callbacks && callbacks.length) {
       nextTick(function() {
         var callback, result;
         for (var i = 0, ii = callbacks.length; i < ii; i++) {
@@ -359,7 +355,6 @@ function qFactory(nextTick, exceptionHandler) {
     result.resolve = bind(result, result.resolve);
     result.reject = bind(result, result.reject);
     result.notify = bind(result, result.notify);
-    result.promise = new Promise(result.$$state);
 
     return result;
   };
