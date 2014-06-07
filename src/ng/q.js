@@ -262,7 +262,7 @@ function qFactory(nextTick, exceptionHandler) {
   }
 
   function Promise(state) {
-    this.$$state = state;
+    this.$$state = {};
   }
 
   Promise.prototype.then = function(onFulfilled, onRejected, progressBack) {
@@ -289,7 +289,7 @@ function qFactory(nextTick, exceptionHandler) {
 
 
   function Defer() {
-    this.promise = new Promise({});
+    this.promise = new Promise();
     //this.resolve = bind(this, this.resolve);
     //this.reject = bind(this, this.reject);
     //this.notify = bind(this, this.notify);
