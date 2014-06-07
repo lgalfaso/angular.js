@@ -189,13 +189,13 @@ function $QProvider() {
 function qFactory(nextTick, exceptionHandler) {
 
 
-  function callOnce(resolveFn, rejectFn) {
+  function callOnce(self, resolveFn, rejectFn) {
     var called = false;
     function wrap(fn) {
       return function(value) {
         if (called) return;
         called = true;
-        fn(value);
+        fn.call(self, value);
       };
     }
     
@@ -289,24 +289,26 @@ function qFactory(nextTick, exceptionHandler) {
 
 
   function Defer() {
-    this.$$state = {};
-    this.promise = new Promise(this.$$state);
+    this.promise = new Promise({});
+    //this.resolve = bind(this, this.resolve);
+    //this.reject = bind(this, this.reject);
+    //this.notify = bind(this, this.notify);
   }
 
   Defer.prototype.resolve = function(val) {
     var then, fns;
 
-    if (this.$$state.status) return;
+    if (this.promise.$$state.status) return;
     if (val === this.promise) throw new TypeError('Cycle detected');
-    fns = callOnce(this.resolve, this.reject);
+    fns = callOnce(this, this.resolve, this.reject);
     try {
       if ((isObject(val) || isFunction(val))) then = val && val.then;
       if (isFunction(then)) {
         then.call(val, fns[0], fns[1], this.notify);
       } else {
-        this.$$state.value = val;
-        this.$$state.status = 1;
-        scheduleProcessQueue(this.$$state);
+        this.promise.$$state.value = val;
+        this.promise.$$state.status = 1;
+        scheduleProcessQueue(this.promise.$$state);
       }
     } catch(e) {
       fns[1](e);
@@ -315,16 +317,16 @@ function qFactory(nextTick, exceptionHandler) {
   };
 
   Defer.prototype.reject = function(reason) {
-    if (this.$$state.status) return;
-    this.$$state.value = reason;
-    this.$$state.status = 2;
-    scheduleProcessQueue(this.$$state);
+    if (this.promise.$$state.status) return;
+    this.promise.$$state.value = reason;
+    this.promise.$$state.status = 2;
+    scheduleProcessQueue(this.promise.$$state);
   };
 
   Defer.prototype.notify = function(progress) {
-    var callbacks = this.$$state.pending;
+    var callbacks = this.promise.$$state.pending;
 
-    if (!this.$$state.status && callbacks && callbacks.length) {
+    if (!this.promise.$$state.status && callbacks && callbacks.length) {
       nextTick(function() {
         var callback, result;
         for (var i = 0, ii = callbacks.length; i < ii; i++) {
@@ -350,13 +352,7 @@ function qFactory(nextTick, exceptionHandler) {
    * @returns {Deferred} Returns a new instance of deferred.
    */
   var defer = function() {
-
-    var result = new Defer();
-    result.resolve = bind(result, result.resolve);
-    result.reject = bind(result, result.reject);
-    result.notify = bind(result, result.notify);
-
-    return result;
+    return new Defer();
   };
 
   /**
