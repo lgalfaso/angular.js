@@ -290,9 +290,9 @@ function qFactory(nextTick, exceptionHandler) {
 
   function Defer() {
     this.promise = new Promise();
-    //this.resolve = bind(this, this.resolve);
-    //this.reject = bind(this, this.reject);
-    //this.notify = bind(this, this.notify);
+    this.resolve = bind(this, this.resolve);
+    this.reject = bind(this, this.reject);
+    this.notify = bind(this, this.notify);
   }
 
   Defer.prototype.resolve = function(val) {
