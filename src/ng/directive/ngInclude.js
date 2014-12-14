@@ -269,27 +269,27 @@ var ngIncludeDirective = ['$templateRequest', '$anchorScroll', '$animate', '$sce
 // We need this directive so that the element content is already filled when
 // the link function of another directive on the same element as ngInclude
 // is called.
-var ngIncludeFillContentDirective = ['$compile',
-  function($compile) {
+var ngIncludeFillContentDirective = ['$compile', '$compiledTemplateCache',
+  function($compile, $compiledTemplateCache) {
     return {
       restrict: 'ECA',
       priority: -400,
       require: 'ngInclude',
       link: function(scope, $element, $attr, ctrl) {
-        if (/SVG/.test($element[0].toString())) {
-          // WebKit: https://bugs.webkit.org/show_bug.cgi?id=135698 --- SVG elements do not
-          // support innerHTML, so detect this here and try to generate the contents
-          // specially.
-          $element.empty();
-          $compile(jqLiteBuildFragment(ctrl.template, document).childNodes)(scope,
-              function namespaceAdaptedClone(clone) {
-            $element.append(clone);
-          }, {futureParentElement: $element});
-          return;
+        var linkFn = $compiledTemplateCache.get(ctrl.template);
+        if (isUndefined(linkFn)) {
+          linkFn = $compile(jqLiteBuildFragment(ctrl.template, document).childNodes);
+          $compiledTemplateCache.put(ctrl.template, linkFn);
         }
-
-        $element.html(ctrl.template);
-        $compile($element.contents())(scope);
+        // WebKit: https://bugs.webkit.org/show_bug.cgi?id=135698 --- SVG elements do not
+        // support innerHTML, so detect this here and try to generate the contents
+        // specially.
+        $element.empty();
+        linkFn(scope,
+            function namespaceAdaptedClone(clone) {
+          $element.append(clone);
+        }, {futureParentElement: $element});
+        return;
       }
     };
   }];

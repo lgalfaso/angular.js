@@ -400,3 +400,8 @@ function $TemplateCacheProvider() {
   }];
 }
 
+function $CompiledTemplateCacheProvider() {
+  this.$get = ['$cacheFactory', function($cacheFactory) {
+    return $cacheFactory('compiledTemplates');
+  }];
+}
