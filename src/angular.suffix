@@ -10,8 +10,10 @@
 
   publishExternalAPI(angular);
 
-  jqLite(document).ready(function() {
-    angularInit(document, bootstrap);
-  });
+  if (document) {
+    jqLite(document).ready(function() {
+      angularInit(document, bootstrap);
+    });
+  }
 
-})(window, document);
+})(typeof importScripts === 'function' ? self : window, typeof importScripts === 'function' ? undefined : document);

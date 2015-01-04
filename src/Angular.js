@@ -182,7 +182,7 @@ var
  * documentMode is an IE-only property
  * http://msdn.microsoft.com/en-us/library/ie/cc196988(v=vs.85).aspx
  */
-msie = document.documentMode;
+msie = document && document.documentMode;
 
 
 /**
@@ -877,8 +877,8 @@ function equals(o1, o2) {
 var csp = function() {
   if (isDefined(csp.isActive_)) return csp.isActive_;
 
-  var active = !!(document.querySelector('[ng-csp]') ||
-                  document.querySelector('[data-ng-csp]'));
+  var active = !!(document && (document.querySelector('[ng-csp]') ||
+                  document.querySelector('[data-ng-csp]')));
 
   if (!active) {
     try {
