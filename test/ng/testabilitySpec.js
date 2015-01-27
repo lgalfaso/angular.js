@@ -167,12 +167,12 @@ describe('$$testability', function() {
 
   describe('location', function() {
     beforeEach(module(function() {
-      return function($httpBackend) {
+      return ['$httpBackend', function($httpBackend) {
         $httpBackend.when('GET', 'foo.html').respond('foo');
         $httpBackend.when('GET', 'baz.html').respond('baz');
         $httpBackend.when('GET', 'bar.html').respond('bar');
         $httpBackend.when('GET', '404.html').respond('not found');
-      };
+      }];
     }));
 
     it('should return the current URL', inject(function($location, $$testability) {

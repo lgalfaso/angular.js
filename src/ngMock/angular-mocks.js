@@ -2323,24 +2323,17 @@ if (window.jasmine || window.mocha) {
       if (!injector) {
         if (strictDi) {
           // If strictDi is enabled, annotate the providerInjector blocks
-          angular.forEach(modules, function(moduleFn) {
-            if (typeof moduleFn === "function") {
-              angular.injector.$$annotate(moduleFn);
-            }
+          angular.forEach(modules, function(moduleFn, i) {
+            modules[i] = wrapForAnnotation(moduleFn);
           });
         }
         injector = currentSpec.$injector = angular.injector(modules, strictDi);
         currentSpec.$injectorStrict = strictDi;
       }
       for (var i = 0, ii = blockFns.length; i < ii; i++) {
-        if (currentSpec.$injectorStrict) {
-          // If the injector is strict / strictDi, and the spec wants to inject using automatic
-          // annotation, then annotate the function here.
-          injector.annotate(blockFns[i]);
-        }
         try {
           /* jshint -W040 *//* Jasmine explicitly provides a `this` object when calling functions */
-          injector.invoke(blockFns[i] || angular.noop, this);
+          injector.invoke(wrapForAnnotation(blockFns[i] || angular.noop), this);
           /* jshint +W040 */
         } catch (e) {
           if (e.stack && errorForStack) {
@@ -2370,3 +2363,19 @@ if (window.jasmine || window.mocha) {
     }
   };
 }
+
+function wrapForAnnotation(fn) {
+  var injector = currentSpec.$injector;
+
+  if (!angular.isFunction(fn)) return fn;
+  if (fn.$inject || fn.length === 0) return fn;
+  wrap.$inject = angular.injector.$$extractParameters(fn);
+  return wrap;
+
+  function wrap() {
+    /*jshint validthis: true */
+    return fn.apply(this, arguments);
+    /*jshint validthis: false */
+  }
+}
+

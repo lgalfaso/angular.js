@@ -1209,11 +1209,11 @@ describe('ngRepeat', function() {
     it('should allow mixing ngRepeat and another element transclusion directive', function() {
       $compileProvider.directive('elmTrans', valueFn({
         transclude: 'element',
-        controller: function($transclude, $scope, $element) {
+        controller: ['$transclude', '$scope', '$element', function($transclude, $scope, $element) {
           $transclude(function(transcludedNodes) {
             $element.after(']]').after(transcludedNodes).after('[[');
           });
-        }
+        }]
       }));
 
       inject(function($compile, $rootScope) {
@@ -1385,11 +1385,11 @@ describe('ngRepeat animations', function() {
 
   beforeEach(module(function() {
     // we need to run animation on attached elements;
-    return function(_$rootElement_) {
+    return ['$rootElement', function(_$rootElement_) {
       $rootElement = _$rootElement_;
       body = jqLite(document.body);
       body.append($rootElement);
-    };
+    }];
   }));
 
   afterEach(function() {

@@ -89,7 +89,7 @@ describe('$location', function() {
           find: jasmine.createSpy('find').andReturn(baseElement)
         };
       };
-      $browserProvider.$get = function($document, $window) {
+      $browserProvider.$get = ['$document', '$window', function($document, $window) {
         var sniffer = {history: true};
         var logs = {log:[], warn:[], info:[], error:[]};
         var fakeLog = {log: function() { logs.log.push(slice.call(arguments)); },
@@ -101,7 +101,7 @@ describe('$location', function() {
         var b = new Browser($window, $document, fakeLog, sniffer);
         b.pollFns = [];
         return b;
-      };
+      }];
     });
     var self = this;
     inject(function($location, $browser, $rootScope) {
@@ -655,10 +655,10 @@ describe('$location', function() {
     });
   }
   function initBrowser(options) {
-    return function($browser) {
+    return ['$browser', function($browser) {
       $browser.url(options.url);
       $browser.$$baseHref = options.basePath;
-    };
+    }];
   }
 
   describe('location watch', function() {
@@ -1105,12 +1105,12 @@ describe('$location', function() {
         $provide.value('$sniffer', {history: supportHist});
         $locationProvider.html5Mode(html5Mode);
         $locationProvider.hashPrefix('!');
-        return function($rootElement, $document) {
+        return ['$rootElement', '$document', function($rootElement, $document) {
           $rootElement.append(link);
           root = $rootElement[0];
           // we need to do this otherwise we can't simulate events
           $document.find('body').append($rootElement);
-        };
+        }];
       });
     }
 
@@ -1555,12 +1555,12 @@ describe('$location', function() {
     it('should not mess up hash urls when clicking on links in hashbang mode', function() {
       var base;
       module(function() {
-        return function($browser) {
+        return ['$browser', function($browser) {
           window.location.hash = 'someHash';
           base = window.location.href;
           $browser.url(base);
           base = base.split('#')[0];
-        };
+        }];
       });
       inject(function($rootScope, $compile, $browser, $rootElement, $document, $location) {
         // we need to do this otherwise we can't simulate events
@@ -1587,12 +1587,12 @@ describe('$location', function() {
         function() {
       var base;
       module(function($locationProvider) {
-        return function($browser) {
+        return ['$browser', function($browser) {
           window.location.hash = '!someHash';
           $browser.url(base = window.location.href);
           base = base.split('#')[0];
           $locationProvider.hashPrefix('!');
-        };
+        }];
       });
       inject(function($rootScope, $compile, $browser, $rootElement, $document, $location) {
         // we need to do this otherwise we can't simulate events
@@ -1623,9 +1623,9 @@ describe('$location', function() {
           },
           off: noop
         });
-        return function($browser) {
+        return ['$browser', function($browser) {
           $browser.url(base = 'http://server/');
-        };
+        }];
       });
       inject(function($location) {
         // make IE happy
@@ -1654,9 +1654,9 @@ describe('$location', function() {
           },
           off: angular.noop
         });
-        return function($browser) {
+        return ['$browser', function($browser) {
           $browser.url(base = 'http://server/');
-        };
+        }];
       });
       inject(function($rootScope, $compile, $browser, $rootElement, $document, $location) {
         // make IE happy
@@ -1693,12 +1693,12 @@ describe('$location', function() {
     it('should not throw when clicking an SVGAElement link', function() {
       var base;
       module(function($locationProvider) {
-        return function($browser) {
+        return ['$browser', function($browser) {
           window.location.hash = '!someHash';
           $browser.url(base = window.location.href);
           base = base.split('#')[0];
           $locationProvider.hashPrefix('!');
-        };
+        }];
       });
       inject(function($rootScope, $compile, $browser, $rootElement, $document, $location) {
         // we need to do this otherwise we can't simulate events
@@ -1948,11 +1948,11 @@ describe('$location', function() {
 
     it('should listen on click events on href and prevent browser default in hashbang mode', function() {
       module(function() {
-        return function($rootElement, $compile, $rootScope) {
+        return ['$rootElement', '$compile', '$rootScope', function($rootElement, $compile, $rootScope) {
           $rootElement.html('<a href="http://server/#/somePath">link</a>');
           $compile($rootElement)($rootScope);
           jqLite(document.body).append($rootElement);
-        };
+        }];
       });
 
       inject(function($location, $rootScope, $browser, $rootElement) {
@@ -1981,11 +1981,11 @@ describe('$location', function() {
     it('should listen on click events on href and prevent browser default in html5 mode', function() {
       module(function($locationProvider, $provide) {
         $locationProvider.html5Mode(true);
-        return function($rootElement, $compile, $rootScope) {
+        return ['$rootElement', '$compile', '$rootScope', function($rootElement, $compile, $rootScope) {
           $rootElement.html('<a href="http://server/somePath">link</a>');
           $compile($rootElement)($rootScope);
           jqLite(document.body).append($rootElement);
-        };
+        }];
       });
 
       inject(function($location, $rootScope, $browser, $rootElement) {

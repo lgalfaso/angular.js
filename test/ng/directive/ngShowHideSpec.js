@@ -128,9 +128,9 @@ describe('ngShow / ngHide animations', function() {
   beforeEach(module('ngAnimateMock'));
 
   beforeEach(module(function($animateProvider, $provide) {
-    return function(_$rootElement_) {
+    return ['$rootElement', function(_$rootElement_) {
       $rootElement = _$rootElement_;
-    };
+    }];
   }));
 
   describe('ngShow', function() {

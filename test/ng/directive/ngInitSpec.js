@@ -29,7 +29,7 @@ describe('ngInit', function() {
 
   it("should be evaluated after ngController", function() {
     module(function($controllerProvider) {
-      $controllerProvider.register('TestCtrl', function($scope) {});
+      $controllerProvider.register('TestCtrl', ['$scope', function($scope) {}]);
     });
     inject(function($rootScope, $compile) {
       element = $compile('<div><div ng-controller="TestCtrl" ' +

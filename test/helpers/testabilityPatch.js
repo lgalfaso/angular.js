@@ -12,6 +12,7 @@ if (window._jQuery) _jQuery.event.special.change = undefined;
 if (window.bindJQuery) bindJQuery();
 
 beforeEach(function() {
+  angular.mock.inject.strictDi(true);
   // all this stuff is not needed for module tests, where jqlite and publishExternalAPI and jqLite are not global vars
   if (window.publishExternalAPI) {
     publishExternalAPI(angular);

@@ -43,7 +43,7 @@ describe('$compile', function() {
     element = null;
     directive = $compileProvider.directive;
 
-    directive('log', function(log) {
+    directive('log', ['log', function(log) {
       return {
         restrict: 'CAM',
         priority:0,
@@ -51,19 +51,19 @@ describe('$compile', function() {
           log(attrs.log || 'LOG');
         })
       };
-    });
+    }]);
 
-    directive('highLog', function(log) {
+    directive('highLog', ['log', function(log) {
       return { restrict: 'CAM', priority:3, compile: valueFn(function(scope, element, attrs) {
         log(attrs.highLog || 'HIGH');
       })};
-    });
+    }]);
 
-    directive('mediumLog', function(log) {
+    directive('mediumLog', ['log', function(log) {
       return { restrict: 'CAM', priority:2, compile: valueFn(function(scope, element, attrs) {
         log(attrs.mediumLog || 'MEDIUM');
       })};
-    });
+    }]);
 
     directive('greet', function() {
       return { restrict: 'CAM', priority:10,  compile: valueFn(function(scope, element, attrs) {
@@ -130,10 +130,10 @@ describe('$compile', function() {
     });
 
 
-    return function(_$compile_, _$rootScope_) {
+    return ['$compile', '$rootScope', function(_$compile_, _$rootScope_) {
       $rootScope = _$rootScope_;
       $compile = _$compile_;
-    };
+    }];
   }));
 
   function compile(html) {
@@ -149,7 +149,7 @@ describe('$compile', function() {
   describe('configuration', function() {
     it('should register a directive', function() {
       module(function() {
-        directive('div', function(log) {
+        directive('div', ['log', function(log) {
           return {
             restrict: 'ECA',
             link: function(scope, element) {
@@ -157,7 +157,7 @@ describe('$compile', function() {
               element.text('SUCCESS');
             }
           };
-        });
+        }]);
       });
       inject(function($compile, $rootScope, log) {
         element = $compile('<div></div>')($rootScope);
@@ -168,7 +168,7 @@ describe('$compile', function() {
 
     it('should allow registration of multiple directives with same name', function() {
       module(function() {
-        directive('div', function(log) {
+        directive('div', ['log', function(log) {
           return {
             restrict: 'ECA',
             link: {
@@ -176,8 +176,8 @@ describe('$compile', function() {
               post: log.fn('post1')
             }
           };
-        });
-        directive('div', function(log) {
+        }]);
+        directive('div', ['log', function(log) {
           return {
             restrict: 'ECA',
             link: {
@@ -185,7 +185,7 @@ describe('$compile', function() {
               post: log.fn('post2')
             }
           };
-        });
+        }]);
       });
       inject(function($compile, $rootScope, log) {
         element = $compile('<div></div>')($rootScope);
@@ -467,7 +467,7 @@ describe('$compile', function() {
       it('should receive scope, element, and attributes', function() {
         var injector;
         module(function() {
-          directive('log', function($injector, $rootScope) {
+          directive('log', ['$injector', '$rootScope', function($injector, $rootScope) {
             injector = $injector;
             return {
               restrict: 'CA',
@@ -488,7 +488,7 @@ describe('$compile', function() {
                 };
               }
             };
-          });
+          }]);
         });
         inject(function($rootScope, $compile, $injector) {
           element = $compile(
@@ -642,14 +642,14 @@ describe('$compile', function() {
           module(function() {
             forEach({div: 'E', attr: 'A', clazz: 'C', comment: 'M', all: 'EACM'},
                 function(restrict, name) {
-              directive(name, function(log) {
+              directive(name, ['log', function(log) {
                 return {
                   restrict: restrict,
                   compile: valueFn(function(scope, element, attr) {
                     log(name);
                   })
                 };
-              });
+              }]);
             });
           });
           inject(function($rootScope, $compile, log) {
@@ -689,13 +689,13 @@ describe('$compile', function() {
 
         it('should use EA rule as the default', function() {
           module(function() {
-            directive('defaultDir', function(log) {
+            directive('defaultDir', ['log', function(log) {
               return {
                 compile: function() {
                   log('defaultDir');
                 }
               };
-            });
+            }]);
           });
           inject(function($rootScope, $compile, log) {
             dealoc($compile('<span default-dir ></span>')($rootScope));
@@ -1161,14 +1161,14 @@ describe('$compile', function() {
               restrict: 'CAM',
               templateUrl: 'http://example.com/should-not-load.html'
             }));
-            directive('trustedTemplate', function($sce) {
+            directive('trustedTemplate', ['$sce', function($sce) {
               return {
                 restrict: 'CAM',
                 templateUrl: function() {
                   return $sce.trustAsResourceUrl('http://example.com/trusted-template.html');
                 }
               };
-            });
+            }]);
             directive('cError', valueFn({
               restrict: 'CAM',
               templateUrl:'error.html',
@@ -1628,7 +1628,7 @@ describe('$compile', function() {
           var template;
           beforeEach(module(function() {
             function logDirective(name, priority, options) {
-              directive(name, function(log) {
+              directive(name, ['log', function(log) {
                 return (extend({
                   priority: priority,
                   compile: function() {
@@ -1639,7 +1639,7 @@ describe('$compile', function() {
                     };
                   }
                 }, options || {}));
-              });
+              }]);
             }
 
             logDirective('first', 10);
@@ -2073,7 +2073,7 @@ describe('$compile', function() {
 
         beforeEach(module(function() {
           forEach(['', 'a', 'b'], function(name) {
-            directive('scope' + uppercase(name), function(log) {
+            directive('scope' + uppercase(name), ['log', function(log) {
               return {
                 scope: true,
                 restrict: 'CA',
@@ -2084,8 +2084,8 @@ describe('$compile', function() {
                   }};
                 }
               };
-            });
-            directive('iscope' + uppercase(name), function(log) {
+            }]);
+            directive('iscope' + uppercase(name), ['log', function(log) {
               return {
                 scope: {},
                 restrict: 'CA',
@@ -2097,8 +2097,8 @@ describe('$compile', function() {
                   };
                 }
               };
-            });
-            directive('tscope' + uppercase(name), function(log) {
+            }]);
+            directive('tscope' + uppercase(name), ['log', function(log) {
               return {
                 scope: true,
                 restrict: 'CA',
@@ -2110,8 +2110,8 @@ describe('$compile', function() {
                   };
                 }
               };
-            });
-            directive('stscope' + uppercase(name), function(log) {
+            }]);
+            directive('stscope' + uppercase(name), ['log', function(log) {
               return {
                 scope: true,
                 restrict: 'CA',
@@ -2123,8 +2123,8 @@ describe('$compile', function() {
                   };
                 }
               };
-            });
-            directive('trscope' + uppercase(name), function(log) {
+            }]);
+            directive('trscope' + uppercase(name), ['log', function(log) {
               return {
                 scope: true,
                 replace: true,
@@ -2137,8 +2137,8 @@ describe('$compile', function() {
                   };
                 }
               };
-            });
-            directive('tiscope' + uppercase(name), function(log) {
+            }]);
+            directive('tiscope' + uppercase(name), ['log', function(log) {
               return {
                 scope: {},
                 restrict: 'CA',
@@ -2151,8 +2151,8 @@ describe('$compile', function() {
                   };
                 }
               };
-            });
-            directive('stiscope' + uppercase(name), function(log) {
+            }]);
+            directive('stiscope' + uppercase(name), ['log', function(log) {
               return {
                 scope: {},
                 restrict: 'CA',
@@ -2165,16 +2165,16 @@ describe('$compile', function() {
                   };
                 }
               };
-            });
+            }]);
           });
-          directive('log', function(log) {
+          directive('log', ['log', function(log) {
             return {
               restrict: 'CA',
               link: {pre: function(scope) {
                 log('log-' + scope.$id + '-' + (scope.$parent && scope.$parent.$id || 'no-parent'));
               }}
             };
-          });
+          }]);
         }));
 
 
@@ -2529,7 +2529,7 @@ describe('$compile', function() {
 
     it('should process attribute interpolation in pre-linking phase at priority 100', function() {
       module(function() {
-        directive('attrLog', function(log) {
+        directive('attrLog', ['log', function(log) {
           return {
             compile: function($element, $attrs) {
               log('compile=' + $attrs.myName);
@@ -2544,10 +2544,10 @@ describe('$compile', function() {
               };
             }
           };
-        });
+        }]);
       });
       module(function() {
-        directive('attrLogHighPriority', function(log) {
+        directive('attrLogHighPriority', ['log', function(log) {
           return {
             priority: 101,
             compile: function() {
@@ -2558,7 +2558,7 @@ describe('$compile', function() {
               };
             }
           };
-        });
+        }]);
       });
       inject(function($rootScope, $compile, log) {
         element = $compile('<div attr-log-high-priority attr-log my-name="{{name}}"></div>')($rootScope);
@@ -2764,7 +2764,7 @@ describe('$compile', function() {
 
     it('should make attributes observable for terminal directives', function() {
       module(function() {
-        directive('myAttr', function(log) {
+        directive('myAttr', ['log', function(log) {
           return {
             terminal: true,
             link: function(scope, element, attrs) {
@@ -2773,7 +2773,7 @@ describe('$compile', function() {
               });
             }
           };
-        });
+        }]);
       });
 
       inject(function($compile, $rootScope, log) {
@@ -2794,7 +2794,7 @@ describe('$compile', function() {
     beforeEach(module(function() {
 
       forEach(['a', 'b', 'c'], function(name) {
-        directive(name, function(log) {
+        directive(name, ['log', function(log) {
           return {
             restrict: 'ECA',
             compile: function() {
@@ -2809,7 +2809,7 @@ describe('$compile', function() {
               };
             }
           };
-        });
+        }]);
       });
     }));
 
@@ -3717,7 +3717,7 @@ describe('$compile', function() {
             'str': '@dirStr',
             'fn': '&dirFn'
           },
-          controller: function($scope) {
+          controller: ['$scope', function($scope) {
             expect(this.data).toEqualData({
               'foo': 'bar',
               'baz': 'biz'
@@ -3725,7 +3725,7 @@ describe('$compile', function() {
             expect(this.str).toBe('Hello, world!');
             expect(this.fn()).toBe('called!');
             controllerCalled = true;
-          },
+          }],
           controllerAs: 'test',
           bindToController: true
         }));
@@ -3752,7 +3752,7 @@ describe('$compile', function() {
           scope: {
             text: '@atBinding'
           },
-          controller: function($scope) {},
+          controller: ['$scope', function($scope) {}],
           bindToController: true,
           controllerAs: 'At'
         }));
@@ -3781,7 +3781,7 @@ describe('$compile', function() {
             'str': '@dirStr',
             'fn': '&dirFn'
           },
-          controller: function($scope) {
+          controller: ['$scope', function($scope) {
             expect(this.data).toEqualData({
               'foo': 'bar',
               'baz': 'biz'
@@ -3789,7 +3789,7 @@ describe('$compile', function() {
             expect(this.str).toBe('Hello, world!');
             expect(this.fn()).toBe('called!');
             controllerCalled = true;
-          },
+          }],
           controllerAs: 'test',
           bindToController: true
         }));
@@ -3815,7 +3815,7 @@ describe('$compile', function() {
   describe('controller', function() {
     it('should get required controller', function() {
       module(function() {
-        directive('main', function(log) {
+        directive('main', ['log', function(log) {
           return {
             priority: 2,
             controller: function() {
@@ -3825,8 +3825,8 @@ describe('$compile', function() {
               log(controller.name);
             }
           };
-        });
-        directive('dep', function(log) {
+        }]);
+        directive('dep', ['log', function(log) {
           return {
             priority: 1,
             require: 'main',
@@ -3834,14 +3834,14 @@ describe('$compile', function() {
               log('dep:' + controller.name);
             }
           };
-        });
-        directive('other', function(log) {
+        }]);
+        directive('other', ['log', function(log) {
           return {
             link: function(scope, element, attrs, controller) {
               log(!!controller); // should be false
             }
           };
-        });
+        }]);
       });
       inject(function(log, $compile, $rootScope) {
         element = $compile('<div main dep other></div>')($rootScope);
@@ -3852,15 +3852,15 @@ describe('$compile', function() {
 
     it('should get required parent controller', function() {
       module(function() {
-        directive('nested', function(log) {
+        directive('nested', ['log', function(log) {
           return {
             require: '^^?nested',
-            controller: function($scope) {},
+            controller: ['$scope', function($scope) {}],
             link: function(scope, element, attrs, controller) {
               log(!!controller);
             }
           };
-        });
+        }]);
       });
       inject(function(log, $compile, $rootScope) {
         element = $compile('<div nested><div nested></div></div>')($rootScope);
@@ -3871,15 +3871,15 @@ describe('$compile', function() {
 
     it('should get required parent controller when the question mark precedes the ^^', function() {
       module(function() {
-        directive('nested', function(log) {
+        directive('nested', ['log', function(log) {
           return {
             require: '?^^nested',
-            controller: function($scope) {},
+            controller: ['$scope', function($scope) {}],
             link: function(scope, element, attrs, controller) {
               log(!!controller);
             }
           };
-        });
+        }]);
       });
       inject(function(log, $compile, $rootScope) {
         element = $compile('<div nested><div nested></div></div>')($rootScope);
@@ -3893,7 +3893,7 @@ describe('$compile', function() {
         directive('nested', function() {
           return {
             require: '^^nested',
-            controller: function($scope) {},
+            controller: ['$scope', function($scope) {}],
             link: function(scope, element, attrs, controller) {}
           };
         });
@@ -3915,7 +3915,7 @@ describe('$compile', function() {
             }
           };
         });
-        directive('dirB', function(log) {
+        directive('dirB', ['log', function(log) {
           return {
             require: 'dirA',
             template: '<p>dirB</p>',
@@ -3923,7 +3923,7 @@ describe('$compile', function() {
               log('dirAController.name: ' + dirAController.name);
             }
           };
-        });
+        }]);
       });
       inject(function(log, $compile, $rootScope) {
         element = $compile('<div dir-a dir-b></div>')($rootScope);
@@ -3941,7 +3941,7 @@ describe('$compile', function() {
             }
           };
         });
-        directive('dirB', function(log) {
+        directive('dirB', ['log', function(log) {
           return {
             require: 'dirA',
             templateUrl: 'dirB.html',
@@ -3949,7 +3949,7 @@ describe('$compile', function() {
               log('dirAController.name: ' + dirAController.name);
             }
           };
-        });
+        }]);
       });
       inject(function(log, $compile, $rootScope, $templateCache) {
         $templateCache.put('dirB.html', '<p>dirB</p>');
@@ -4099,13 +4099,13 @@ describe('$compile', function() {
             template: '<span scope-tester="replaced"><span scope-tester="inside"></span></span>'
           };
         });
-        directive('scopeTester', function(log) {
+        directive('scopeTester', ['log', function(log) {
           return {
             link: function($scope, $element) {
               log($element.attr('scope-tester') + '=' + ($scope.$root === $scope ? 'non-isolate' : 'isolate'));
             }
           };
-        });
+        }]);
       });
 
       inject(function($compile, $rootScope, log) {
@@ -4202,21 +4202,21 @@ describe('$compile', function() {
 
     it('should require controller on parent element',function() {
       module(function() {
-        directive('main', function(log) {
+        directive('main', ['log', function(log) {
           return {
             controller: function() {
               this.name = 'main';
             }
           };
-        });
-        directive('dep', function(log) {
+        }]);
+        directive('dep', ['log', function(log) {
           return {
             require: '^main',
             link: function(scope, element, attrs, controller) {
               log('dep:' + controller.name);
             }
           };
-        });
+        }]);
       });
       inject(function(log, $compile, $rootScope) {
         element = $compile('<div main><div dep></div></div>')($rootScope);
@@ -4227,14 +4227,14 @@ describe('$compile', function() {
 
     it("should throw an error if required controller can't be found",function() {
       module(function() {
-        directive('dep', function(log) {
+        directive('dep', ['log', function(log) {
           return {
             require: '^main',
             link: function(scope, element, attrs, controller) {
               log('dep:' + controller.name);
             }
           };
-        });
+        }]);
       });
       inject(function(log, $compile, $rootScope) {
         expect(function() {
@@ -4246,14 +4246,14 @@ describe('$compile', function() {
 
     it("should pass null if required controller can't be found and is optional",function() {
       module(function() {
-        directive('dep', function(log) {
+        directive('dep', ['log', function(log) {
           return {
             require: '?^main',
             link: function(scope, element, attrs, controller) {
               log('dep:' + controller);
             }
           };
-        });
+        }]);
       });
       inject(function(log, $compile, $rootScope) {
         $compile('<div main><div dep></div></div>')($rootScope);
@@ -4264,14 +4264,14 @@ describe('$compile', function() {
 
     it("should pass null if required controller can't be found and is optional with the question mark on the right",function() {
       module(function() {
-        directive('dep', function(log) {
+        directive('dep', ['log', function(log) {
           return {
             require: '^?main',
             link: function(scope, element, attrs, controller) {
               log('dep:' + controller);
             }
           };
-        });
+        }]);
       });
       inject(function(log, $compile, $rootScope) {
         $compile('<div main><div dep></div></div>')($rootScope);
@@ -4282,14 +4282,14 @@ describe('$compile', function() {
 
     it('should have optional controller on current element', function() {
       module(function() {
-        directive('dep', function(log) {
+        directive('dep', ['log', function(log) {
           return {
             require: '?main',
             link: function(scope, element, attrs, controller) {
               log('dep:' + !!controller);
             }
           };
-        });
+        }]);
       });
       inject(function(log, $compile, $rootScope) {
         element = $compile('<div main><div dep></div></div>')($rootScope);
@@ -4306,14 +4306,14 @@ describe('$compile', function() {
         directive('c2', valueFn({
           controller: function() { this.name = 'c2'; }
         }));
-        directive('dep', function(log) {
+        directive('dep', ['log', function(log) {
           return {
             require: ['^c1', '^c2'],
             link: function(scope, element, attrs, controller) {
               log('dep:' + controller[0].name + '-' + controller[1].name);
             }
           };
-        });
+        }]);
       });
       inject(function(log, $compile, $rootScope) {
         element = $compile('<div c1 c2><div dep></div></div>')($rootScope);
@@ -4377,14 +4377,14 @@ describe('$compile', function() {
             transclude: true,
             replace: true,
             templateUrl: 'parentDirective.html',
-            controller: function(log) { log('parentController'); }
+            controller: ['log', function(log) { log('parentController'); }]
           };
         });
         directive('childDirective', function() {
           return {
             require: '^parentDirective',
             templateUrl: 'childDirective.html',
-            controller: function(log) { log('childController'); }
+            controller: ['log', function(log) { log('childController'); }]
           };
         });
       });
@@ -4403,9 +4403,9 @@ describe('$compile', function() {
 
     it('should instantiate the controller after the isolate scope bindings are initialized (with template)', function() {
       module(function() {
-        var Ctrl = function($scope, log) {
+        var Ctrl = ['$scope', 'log', function($scope, log) {
           log('myFoo=' + $scope.myFoo);
-        };
+        }];
 
         directive('myDirective', function() {
           return {
@@ -4430,9 +4430,9 @@ describe('$compile', function() {
 
     it('should instantiate the controller after the isolate scope bindings are initialized (with templateUrl)', function() {
       module(function() {
-        var Ctrl = function($scope, log) {
+        var Ctrl = ['$scope', 'log', function($scope, log) {
           log('myFoo=' + $scope.myFoo);
-        };
+        }];
 
         directive('myDirective', function() {
           return {
@@ -4466,7 +4466,7 @@ describe('$compile', function() {
             transclude: true,
             replace: true,
             templateUrl: 'parentDirective.html',
-            controller: function(log) { log('parentController'); }
+            controller: ['log', function(log) { log('parentController'); }]
           };
         });
         directive('childDirective', function() {
@@ -4475,14 +4475,14 @@ describe('$compile', function() {
             transclude: true,
             replace: true,
             templateUrl: 'childDirective.html',
-            controller: function(log) { log('childController'); }
+            controller: ['log', function(log) { log('childController'); }]
           };
         });
         directive('babyDirective', function() {
           return {
             require: '^childDirective',
             templateUrl: 'babyDirective.html',
-            controller: function(log) { log('babyController'); }
+            controller: ['log', function(log) { log('babyController'); }]
           };
         });
       });
@@ -4507,9 +4507,9 @@ describe('$compile', function() {
 
     it('should allow controller usage in pre-link directive functions with templateUrl', function() {
       module(function() {
-        var Ctrl = function(log) {
+        var Ctrl = ['log', function(log) {
           log('instance');
-        };
+        }];
 
         directive('myDirective', function() {
           return {
@@ -4540,9 +4540,9 @@ describe('$compile', function() {
 
     it('should allow controller usage in pre-link directive functions with a template', function() {
       module(function() {
-        var Ctrl = function(log) {
+        var Ctrl = ['log', function(log) {
           log('instance');
-        };
+        }];
 
         directive('myDirective', function() {
           return {
@@ -4635,11 +4635,11 @@ describe('$compile', function() {
             transclude: 'content',
             template: '<div>section-!<div ng-transclude></div>!</div></div>'
           }));
-          return function($httpBackend) {
+          return ['$httpBackend', function($httpBackend) {
             $httpBackend.
                 expect('GET', 'chapter.html').
                 respond('<div>chapter-<div section>[<div ng-transclude></div>]</div></div>');
-          };
+          }];
         });
         inject(function(log, $rootScope, $compile, $httpBackend) {
           element = $compile('<div><div book>paragraph</div></div>')($rootScope);
@@ -4779,12 +4779,12 @@ describe('$compile', function() {
         var linkFn = jasmine.createSpy('linkFn');
 
         module(function($controllerProvider, $compileProvider) {
-          $controllerProvider.register('Leak', function($scope, $timeout) {
+          $controllerProvider.register('Leak', ['$scope', '$timeout', function($scope, $timeout) {
             $scope.code = 'red';
             $timeout(function() {
               $scope.code = 'blue';
             });
-          });
+          }]);
           $compileProvider.directive('isolateRed', function() {
             return {
               restrict: 'A',
@@ -5039,7 +5039,7 @@ describe('$compile', function() {
       it('should make the result of a transclusion available to the parent directive in post-linking phase' +
           '(template)', function() {
         module(function() {
-          directive('trans', function(log) {
+          directive('trans', ['log', function(log) {
             return {
               transclude: true,
               template: '<div ng-transclude></div>',
@@ -5052,7 +5052,7 @@ describe('$compile', function() {
                 }
               }
             };
-          });
+          }]);
         });
         inject(function(log, $rootScope, $compile) {
           element = $compile('<div trans><span>unicorn!</span></div>')($rootScope);
@@ -5068,7 +5068,7 @@ describe('$compile', function() {
         // this is different compared to sync directive. delaying the transclusion makes little sense.
 
         module(function() {
-          directive('trans', function(log) {
+          directive('trans', ['log', function(log) {
             return {
               transclude: true,
               templateUrl: 'trans.html',
@@ -5081,7 +5081,7 @@ describe('$compile', function() {
                 }
               }
             };
-          });
+          }]);
         });
         inject(function(log, $rootScope, $compile, $templateCache) {
           $templateCache.put('trans.html', '<div ng-transclude></div>');
@@ -5096,7 +5096,7 @@ describe('$compile', function() {
       it('should make the result of a transclusion available to the parent *replace* directive in post-linking phase' +
           '(template)', function() {
         module(function() {
-          directive('replacedTrans', function(log) {
+          directive('replacedTrans', ['log', function(log) {
             return {
               transclude: true,
               replace: true,
@@ -5110,7 +5110,7 @@ describe('$compile', function() {
                 }
               }
             };
-          });
+          }]);
         });
         inject(function(log, $rootScope, $compile) {
           element = $compile('<div replaced-trans><span>unicorn!</span></div>')($rootScope);
@@ -5123,7 +5123,7 @@ describe('$compile', function() {
       it('should make the result of a transclusion available to the parent *replace* directive in post-linking phase' +
           ' (templateUrl)', function() {
         module(function() {
-          directive('replacedTrans', function(log) {
+          directive('replacedTrans', ['log', function(log) {
             return {
               transclude: true,
               replace: true,
@@ -5137,7 +5137,7 @@ describe('$compile', function() {
                 }
               }
             };
-          });
+          }]);
         });
         inject(function(log, $rootScope, $compile, $templateCache) {
           $templateCache.put('trans.html', '<div ng-transclude></div>');
@@ -5153,9 +5153,9 @@ describe('$compile', function() {
         module(function() {
           directive('transclude', valueFn({
             transclude: 'content',
-            controller: function($transclude) {
+            controller: ['$transclude', function($transclude) {
               transcludeCtrl = this;
-            },
+            }],
             link: function(scope, el, attr, ctrl, $transclude) {
               var i;
               for (i = 0; i < cloneCount; i++) {
@@ -5185,9 +5185,9 @@ describe('$compile', function() {
         module(function() {
           directive('transclude', valueFn({
             transclude: 'content',
-            controller: function($transclude) {
+            controller: ['$transclude', function($transclude) {
               ctrlTransclude = $transclude;
-            },
+            }],
             compile: function() {
               return {
                 pre: function(scope, el, attr, ctrl, $transclude) {
@@ -5261,7 +5261,7 @@ describe('$compile', function() {
           'function returned from `$compile`', function() {
 
         beforeEach(module(function() {
-          directive('lazyCompile', function($compile) {
+          directive('lazyCompile', ['$compile', function($compile) {
             return {
               compile: function(tElement, tAttrs) {
                 var content = tElement.contents();
@@ -5274,7 +5274,7 @@ describe('$compile', function() {
                 };
               }
             };
-          });
+          }]);
           directive('toggle', valueFn({
             scope: {t: '=toggle'},
             transclude: true,
@@ -5710,11 +5710,11 @@ describe('$compile', function() {
 
       it('should support basic element transclusion', function() {
         module(function() {
-          directive('trans', function(log) {
+          directive('trans', ['log', function(log) {
             return {
               transclude: 'element',
               priority: 2,
-              controller: function($transclude) { this.$transclude = $transclude; },
+              controller: ['$transclude', function($transclude) { this.$transclude = $transclude; }],
               compile: function(element, attrs, template) {
                 log('compile: ' + angular.mock.dump(element));
                 return function(scope, element, attrs, ctrl) {
@@ -5725,7 +5725,7 @@ describe('$compile', function() {
                 };
               }
             };
-          });
+          }]);
         });
         inject(function(log, $rootScope, $compile) {
           element = $compile('<div><div high-log trans="text" log>{{$parent.$id}}-{{$id}};</div></div>')
@@ -5823,20 +5823,20 @@ describe('$compile', function() {
 
       it('should terminate compilation only for element trasclusion', function() {
         module(function() {
-          directive('elementTrans', function(log) {
+          directive('elementTrans', ['log', function(log) {
             return {
               transclude: 'element',
               priority: 50,
               compile: log.fn('compile:elementTrans')
             };
-          });
-          directive('regularTrans', function(log) {
+          }]);
+          directive('regularTrans', ['log', function(log) {
             return {
               transclude: true,
               priority: 50,
               compile: log.fn('compile:regularTrans')
             };
-          });
+          }]);
         });
         inject(function(log, $compile, $rootScope) {
           $compile('<div><div element-trans log="elem"></div><div regular-trans log="regular"></div></div>')($rootScope);
@@ -5848,11 +5848,11 @@ describe('$compile', function() {
       it('should instantiate high priority controllers only once, but low priority ones each time we transclude',
           function() {
         module(function() {
-          directive('elementTrans', function(log) {
+          directive('elementTrans', ['log', function(log) {
             return {
               transclude: 'element',
               priority: 50,
-              controller: function($transclude, $element) {
+              controller: ['$transclude', '$element', function($transclude, $element) {
                 log('controller:elementTrans');
                 $transclude(function(clone) {
                   $element.after(clone);
@@ -5863,16 +5863,16 @@ describe('$compile', function() {
                 $transclude(function(clone) {
                   $element.after(clone);
                 });
-              }
+              }]
             };
-          });
-          directive('normalDir', function(log) {
+          }]);
+          directive('normalDir', ['log', function(log) {
             return {
               controller: function() {
                 log('controller:normalDir');
               }
             };
-          });
+          }]);
         });
         inject(function($compile, $rootScope, log) {
           element = $compile('<div><div element-trans normal-dir></div></div>')($rootScope);
@@ -5890,9 +5890,9 @@ describe('$compile', function() {
         module(function() {
           directive('transclude', valueFn({
             transclude: 'element',
-            controller: function($transclude) {
+            controller: ['$transclude', function($transclude) {
               _$transclude = $transclude;
-            }
+            }]
           }));
         });
         inject(function($compile) {
@@ -5967,9 +5967,9 @@ describe('$compile', function() {
           }));
           directive('transclude', valueFn({
             transclude: 'content',
-            controller: function($transclude) {
+            controller: ['$transclude', function($transclude) {
               transclude = $transclude;
-            }
+            }]
           }));
         });
         inject(function($compile, $httpBackend) {
@@ -5983,7 +5983,7 @@ describe('$compile', function() {
       // issue #6006
       it('should link directive with $element as a comment node', function() {
         module(function($provide) {
-          directive('innerAgain', function(log) {
+          directive('innerAgain', ['log', function(log) {
             return {
               transclude: 'element',
               link: function(scope, element, attr, controllers, transclude) {
@@ -5993,8 +5993,8 @@ describe('$compile', function() {
                 });
               }
             };
-          });
-          directive('inner', function(log) {
+          }]);
+          directive('inner', ['log', function(log) {
             return {
               replace: true,
               templateUrl: 'inner.html',
@@ -6002,8 +6002,8 @@ describe('$compile', function() {
                 log('inner:' + lowercase(nodeName_(element)) + ':' + trim(element[0].data));
               }
             };
-          });
-          directive('outer', function(log) {
+          }]);
+          directive('outer', ['log', function(log) {
             return {
               transclude: 'element',
               link: function(scope, element, attrs, controllers, transclude) {
@@ -6013,7 +6013,7 @@ describe('$compile', function() {
                 });
               }
             };
-          });
+          }]);
         });
         inject(function(log, $compile, $rootScope, $templateCache) {
           $templateCache.put('inner.html', '<div inner-again><p>Content</p></div>');
@@ -6059,7 +6059,7 @@ describe('$compile', function() {
           };
         });
 
-        directive('trans', function($timeout) {
+        directive('trans', ['$timeout', function($timeout) {
           return {
             transclude: true,
             link: function(scope, element, attrs, ctrl, transclude) {
@@ -6070,7 +6070,7 @@ describe('$compile', function() {
               });
             }
           };
-        });
+        }]);
 
         directive('replaceWithTemplate', function() {
           return {
@@ -6475,15 +6475,15 @@ describe('$compile', function() {
 
     describe('in directive', function() {
       beforeEach(module(function() {
-        directive('syncTest', function(log) {
+        directive('syncTest', ['log', function(log) {
           return {
             link: {
               pre: function(s, e, attr) { log(attr.test); },
               post: function(s, e, attr) { log(attr.test); }
             }
           };
-        });
-        directive('asyncTest', function(log) {
+        }]);
+        directive('asyncTest', ['log', function(log) {
           return {
             templateUrl: 'async.html',
             link: {
@@ -6491,7 +6491,7 @@ describe('$compile', function() {
               post: function(s, e, attr) { log(attr.test); }
             }
           };
-        });
+        }]);
       }));
 
       beforeEach(inject(function($templateCache) {
@@ -6598,13 +6598,13 @@ describe('$compile', function() {
 
       it('should keep attributes ending with -start single-element directives', function() {
         module(function($compileProvider) {
-          $compileProvider.directive('dashStarter', function(log) {
+          $compileProvider.directive('dashStarter', ['log', function(log) {
             return {
               link: function(scope, element, attrs) {
                 log(attrs.onDashStart);
               }
             };
-          });
+          }]);
         });
         inject(function($compile, $rootScope, log) {
           $compile('<span data-dash-starter data-on-dash-start="starter"></span>')($rootScope);
@@ -6616,13 +6616,13 @@ describe('$compile', function() {
 
       it('should keep attributes ending with -end single-element directives', function() {
         module(function($compileProvider) {
-          $compileProvider.directive('dashEnder', function(log) {
+          $compileProvider.directive('dashEnder', ['log', function(log) {
             return {
               link: function(scope, element, attrs) {
                 log(attrs.onDashEnd);
               }
             };
-          });
+          }]);
         });
         inject(function($compile, $rootScope, log) {
           $compile('<span data-dash-ender data-on-dash-end="ender"></span>')($rootScope);

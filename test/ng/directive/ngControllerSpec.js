@@ -27,15 +27,15 @@ describe('ngController', function() {
         return this.prefix + name + this.suffix;
       }
     };
-    $controllerProvider.register('Greeter', Greeter);
+    $controllerProvider.register('Greeter', ['$scope', Greeter]);
 
-    $controllerProvider.register('Child', function($scope) {
+    $controllerProvider.register('Child', ['$scope', function($scope) {
       $scope.name = 'Adam';
-    });
+    }]);
 
-    $controllerProvider.register('Public', function($scope) {
+    $controllerProvider.register('Public', ['$scope', function($scope) {
       this.mark = 'works';
-    });
+    }]);
 
     var Foo = function($scope) {
       $scope.mark = 'foo';
@@ -87,9 +87,9 @@ describe('ngController', function() {
 
 
   it('should instantiate controller defined on scope', inject(function($compile, $rootScope) {
-    $rootScope.VojtaGreeter = function($scope) {
+    $rootScope.VojtaGreeter = ['$scope', function($scope) {
       $scope.name = 'Vojta';
-    };
+    }];
 
     element = $compile('<div ng-controller="VojtaGreeter">{{name}}</div>')($rootScope);
     $rootScope.$digest();
@@ -98,9 +98,9 @@ describe('ngController', function() {
 
 
   it('should work with ngInclude on the same element', inject(function($compile, $rootScope, $httpBackend) {
-    $rootScope.GreeterController = function($scope) {
+    $rootScope.GreeterController = ['$scope', function($scope) {
       $scope.name = 'Vojta';
-    };
+    }];
 
     element = $compile('<div><div ng-controller="GreeterController" ng-include="\'url\'"></div></div>')($rootScope);
     $httpBackend.expect('GET', 'url').respond('{{name}}');
@@ -115,9 +115,9 @@ describe('ngController', function() {
 
     var count = 0;
 
-    $rootScope.CountController = function($scope) {
+    $rootScope.CountController = ['$scope', function($scope) {
       count += 1;
-    };
+    }];
 
     element = $compile('<div><div ng-controller="CountController" ng-include="url"></div></div>')($rootScope);
 
@@ -140,9 +140,9 @@ describe('ngController', function() {
 
     var controllerScope;
 
-    $rootScope.ExposeScopeController = function($scope) {
+    $rootScope.ExposeScopeController = ['$scope', function($scope) {
       controllerScope = $scope;
-    };
+    }];
 
     element = $compile('<div><div ng-controller="ExposeScopeController" ng-include="\'url\'"></div></div>')($rootScope);
     $httpBackend.expect('GET', 'url').respond('<div ng-init="name=\'Vojta\'"></div>');

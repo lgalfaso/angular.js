@@ -123,11 +123,11 @@ describe('$anchorScroll', function() {
   }
 
   function fireWindowLoadEvent() {
-    return function($browser) {
+    return ['$browser', function($browser) {
       var callback = window.jqLiteDocumentLoaded.mostRecentCall.args[0];
       callback();
       $browser.defer.flush();
-    };
+    }];
   }
 
   afterEach(inject(function($browser, $document) {

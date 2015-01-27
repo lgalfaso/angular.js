@@ -6,9 +6,9 @@ describe('ngView', function() {
   beforeEach(module('ngRoute'));
 
   beforeEach(module(function($provide) {
-    return function($rootScope, $compile, $animate) {
+    return ['$rootScope', '$compile', '$animate', function($rootScope, $compile, $animate) {
       element = $compile('<div><ng:view onload="load()"></ng:view></div>')($rootScope);
-    };
+    }];
   }));
 
 
@@ -41,7 +41,7 @@ describe('ngView', function() {
         };
       });
 
-      $routeProvider.when('/some', {templateUrl: '/tpl.html', controller: Ctrl});
+      $routeProvider.when('/some', {templateUrl: '/tpl.html', controller: ['$scope', Ctrl]});
     });
 
     inject(function($route, $rootScope, $templateCache, $location) {
@@ -64,7 +64,7 @@ describe('ngView', function() {
         };
 
     module(function($routeProvider) {
-      $routeProvider.when('/some', {templateUrl: '/tpl.html', controller: Ctrl});
+      $routeProvider.when('/some', {templateUrl: '/tpl.html', controller: ['$scope', Ctrl]});
     });
 
     inject(function($route, $rootScope, $templateCache, $location) {
@@ -88,7 +88,7 @@ describe('ngView', function() {
         };
 
     module(function($compileProvider, $routeProvider) {
-      $routeProvider.when('/some', {templateUrl: '/tpl.html', controller: Ctrl, controllerAs: 'ctrl'});
+      $routeProvider.when('/some', {templateUrl: '/tpl.html', controller: ['$scope', Ctrl], controllerAs: 'ctrl'});
     });
 
     inject(function($route, $rootScope, $templateCache, $location) {
@@ -242,16 +242,16 @@ describe('ngView', function() {
     }
 
     module(function($routeProvider) {
-      $routeProvider.when('/foo', {controller: ParentCtrl, templateUrl: 'viewPartial.html'});
+      $routeProvider.when('/foo', {controller: ['$scope', ParentCtrl], templateUrl: 'viewPartial.html'});
     });
 
 
     inject(function($rootScope, $compile, $location, $httpBackend, $route) {
       $rootScope.log = [];
 
-      $rootScope.ChildCtrl = function($scope) {
+      $rootScope.ChildCtrl = ['$scope', function($scope) {
         $scope.log.push('child');
-      };
+      }];
 
       $location.path('/foo');
       $httpBackend.expect('GET', 'viewPartial.html').
@@ -335,7 +335,7 @@ describe('ngView', function() {
     };
 
     module(function($routeProvider) {
-      $routeProvider.when('/foo', {templateUrl: 'tpl.html', controller: Ctrl});
+      $routeProvider.when('/foo', {templateUrl: 'tpl.html', controller: ['$scope', Ctrl]});
     });
 
     inject(function($templateCache, $rootScope, $location) {
@@ -386,10 +386,10 @@ describe('ngView', function() {
       function() {
     var log = [];
     var createCtrl = function(name) {
-      return function($scope) {
+      return ['$scope', function($scope) {
         log.push('init-' + name);
         $scope.$on('$destroy', function() {log.push('destroy-' + name);});
-      };
+      }];
     };
 
     module(function($routeProvider) {
@@ -434,11 +434,11 @@ describe('ngView', function() {
     }
 
     function createController(name) {
-      return function($scope) {
+      return ['$scope', function($scope) {
         log.push('init-' + name);
         $scope.$on('$destroy', logger('destroy-' + name));
         $scope.$on('$routeUpdate', logger('route-update'));
-      };
+      }];
     }
 
     module(function($routeProvider) {
@@ -491,7 +491,7 @@ describe('ngView', function() {
     }
 
     module(function($routeProvider) {
-      $routeProvider.when('/foo', {templateUrl: 'tpl.html', controller: MyCtrl});
+      $routeProvider.when('/foo', {templateUrl: 'tpl.html', controller: ['$scope', MyCtrl]});
     });
 
     inject(function($templateCache, $location, $rootScope, $route) {
@@ -519,7 +519,7 @@ describe('ngView', function() {
     function MyCtrl($scope) {}
 
     module(function($routeProvider) {
-      $routeProvider.when('/foo', {templateUrl: 'tpl.html', controller: MyCtrl});
+      $routeProvider.when('/foo', {templateUrl: 'tpl.html', controller: ['$scope', MyCtrl]});
     });
 
     inject(function($templateCache, $location, $rootScope, $route) {
@@ -667,10 +667,10 @@ describe('ngView animations', function() {
 
   beforeEach(module(function() {
     // we need to run animation on attached elements;
-    return function(_$rootElement_) {
+    return ['$rootElement', function(_$rootElement_) {
       $rootElement = _$rootElement_;
       body = angular.element(document.body);
-    };
+    }];
   }));
 
   afterEach(function() {
@@ -682,10 +682,10 @@ describe('ngView animations', function() {
   beforeEach(module(function($provide, $routeProvider) {
     $routeProvider.when('/foo', {controller: angular.noop, templateUrl: '/foo.html'});
     $routeProvider.when('/bar', {controller: angular.noop, templateUrl: '/bar.html'});
-    return function($templateCache) {
+    return ['$templateCache', function($templateCache) {
       $templateCache.put('/foo.html', [200, '<div>data</div>', {}]);
       $templateCache.put('/bar.html', [200, '<div>data2</div>', {}]);
-    };
+    }];
   }));
 
   describe('hooks', function() {

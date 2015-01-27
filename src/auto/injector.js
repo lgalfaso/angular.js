@@ -81,13 +81,10 @@ function anonFn(fn) {
 
 function annotate(fn, strictDi, name) {
   var $inject,
-      fnText,
-      argDecl,
       last;
 
   if (typeof fn === 'function') {
     if (!($inject = fn.$inject)) {
-      $inject = [];
       if (fn.length) {
         if (strictDi) {
           if (!isString(name) || !name) {
@@ -96,13 +93,9 @@ function annotate(fn, strictDi, name) {
           throw $injectorMinErr('strictdi',
             '{0} is not using explicit annotation and cannot be invoked in strict mode', name);
         }
-        fnText = fn.toString().replace(STRIP_COMMENTS, '');
-        argDecl = fnText.match(FN_ARGS);
-        forEach(argDecl[1].split(FN_ARG_SPLIT), function(arg) {
-          arg.replace(FN_ARG, function(all, underscore, name) {
-            $inject.push(name);
-          });
-        });
+        $inject = extractParameters(fn);
+      } else {
+        $inject = [];
       }
       fn.$inject = $inject;
     }
@@ -113,6 +106,20 @@ function annotate(fn, strictDi, name) {
   } else {
     assertArgFn(fn, 'fn', true);
   }
+  return $inject;
+}
+
+function extractParameters(fn) {
+  var $inject = [];
+  var fnText;
+  var argDecl;
+  fnText = fn.toString().replace(STRIP_COMMENTS, '');
+  argDecl = fnText.match(FN_ARGS);
+  forEach(argDecl[1].split(FN_ARG_SPLIT), function(arg) {
+    arg.replace(FN_ARG, function(all, underscore, name) {
+      $inject.push(name);
+    });
+  });
   return $inject;
 }
 
@@ -840,6 +847,7 @@ function createInjector(modulesToLoad, strictDi) {
       instantiate: instantiate,
       get: getService,
       annotate: annotate,
+      extractParameters: extractParameters,
       has: function(name) {
         return providerCache.hasOwnProperty(name + providerSuffix) || cache.hasOwnProperty(name);
       }
@@ -848,3 +856,4 @@ function createInjector(modulesToLoad, strictDi) {
 }
 
 createInjector.$$annotate = annotate;
+createInjector.$$extractParameters = extractParameters;

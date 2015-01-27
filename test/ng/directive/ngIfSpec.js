@@ -248,11 +248,11 @@ describe('ngIf animations', function() {
 
   beforeEach(module(function() {
     // we need to run animation on attached elements;
-    return function(_$rootElement_) {
+    return ['$rootElement', function(_$rootElement_) {
       $rootElement = _$rootElement_;
       body = jqLite(document.body);
       body.append($rootElement);
-    };
+    }];
   }));
 
   afterEach(function() {
@@ -261,9 +261,9 @@ describe('ngIf animations', function() {
   });
 
   beforeEach(module(function($animateProvider, $provide) {
-    return function($animate) {
+    return ['$animate', function($animate) {
       $animate.enabled(true);
-    };
+    }];
   }));
 
   it('should fire off the enter animation',
@@ -315,13 +315,13 @@ describe('ngIf animations', function() {
 
   it('should destroy the previous leave animation if a new one takes place', function() {
     module(function($provide) {
-      $provide.decorator('$animate', function($delegate, $$q) {
+      $provide.decorator('$animate', ['$delegate', '$$q', function($delegate, $$q) {
         var emptyPromise = $$q.defer().promise;
         $delegate.leave = function() {
           return emptyPromise;
         };
         return $delegate;
-      });
+      }]);
     });
     inject(function($compile, $rootScope, $animate) {
       var item;

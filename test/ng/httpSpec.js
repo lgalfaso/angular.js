@@ -31,7 +31,7 @@ describe('$http', function() {
       it('should chain request, requestReject, response and responseReject interceptors', function() {
         module(function($httpProvider) {
           var savedConfig, savedResponse;
-          $httpProvider.interceptors.push(function($q) {
+          $httpProvider.interceptors.push(['$q', function($q) {
             return {
               request: function(config) {
                 config.url += '/1';
@@ -39,15 +39,15 @@ describe('$http', function() {
                 return $q.reject('/2');
               }
             };
-          });
-          $httpProvider.interceptors.push(function($q) {
+          }]);
+          $httpProvider.interceptors.push(['$q', function($q) {
             return {
               requestError: function(error) {
                 savedConfig.url += error;
                 return $q.when(savedConfig);
               }
             };
-          });
+          }]);
           $httpProvider.interceptors.push(function() {
             return {
               responseError: function(rejection) {
@@ -56,7 +56,7 @@ describe('$http', function() {
               }
             };
           });
-          $httpProvider.interceptors.push(function($q) {
+          $httpProvider.interceptors.push(['$q', function($q) {
             return {
               response: function(response) {
                 response.data += ':1';
@@ -64,7 +64,7 @@ describe('$http', function() {
                 return $q.reject(':2');
               }
             };
-          });
+          }]);
         });
         inject(function($http, $httpBackend, $rootScope) {
           var response;
@@ -81,7 +81,7 @@ describe('$http', function() {
 
       it('should verify order of execution', function() {
         module(function($httpProvider) {
-          $httpProvider.interceptors.push(function($q) {
+          $httpProvider.interceptors.push(['$q', function($q) {
             return {
               request: function(config) {
                 config.url += '/outer';
@@ -92,8 +92,8 @@ describe('$http', function() {
                 return response;
               }
             };
-          });
-          $httpProvider.interceptors.push(function($q) {
+          }]);
+          $httpProvider.interceptors.push(['$q', function($q) {
             return {
               request: function(config) {
                 config.url += '/inner';
@@ -104,7 +104,7 @@ describe('$http', function() {
                 return response;
               }
             };
-          });
+          }]);
         });
         inject(function($http, $httpBackend) {
           var response;
@@ -188,13 +188,13 @@ describe('$http', function() {
       it('should reject the http promise if an interceptor fails', function() {
         var reason = new Error('interceptor failed');
         module(function($httpProvider) {
-          $httpProvider.interceptors.push(function($q) {
+          $httpProvider.interceptors.push(['$q', function($q) {
             return {
               request: function(promise) {
                 return $q.reject(reason);
               }
             };
-          });
+          }]);
         });
         inject(function($http, $httpBackend, $rootScope) {
           var success = jasmine.createSpy(), error = jasmine.createSpy();
@@ -249,7 +249,7 @@ describe('$http', function() {
 
       it('should support complex interceptors based on promises', function() {
         module(function($provide, $httpProvider) {
-          $provide.factory('myInterceptor', function($q, $rootScope) {
+          $provide.factory('myInterceptor', ['$q', '$rootScope', function($q, $rootScope) {
             return {
               request: function(config) {
                 return $q.when('/intercepted').then(function(intercepted) {
@@ -258,7 +258,7 @@ describe('$http', function() {
                 });
               }
             };
-          });
+          }]);
           $httpProvider.interceptors.push('myInterceptor');
         });
         inject(function($http, $httpBackend, $rootScope) {

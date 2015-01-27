@@ -312,11 +312,11 @@ describe('ngSwitch animation', function() {
 
   beforeEach(module(function() {
     // we need to run animation on attached elements;
-    return function(_$rootElement_) {
+    return ['$rootElement', function(_$rootElement_) {
       $rootElement = _$rootElement_;
       body = jqLite(document.body);
       body.append($rootElement);
-    };
+    }];
   }));
 
   afterEach(function() {

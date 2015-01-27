@@ -7,7 +7,7 @@ describe('$route', function() {
   beforeEach(module('ngRoute'));
 
   beforeEach(module(function() {
-    return function(_$httpBackend_) {
+    return ['$httpBackend', function(_$httpBackend_) {
       $httpBackend = _$httpBackend_;
       $httpBackend.when('GET', 'Chapter.html').respond('chapter');
       $httpBackend.when('GET', 'test.html').respond('test');
@@ -16,7 +16,7 @@ describe('$route', function() {
       $httpBackend.when('GET', 'bar.html').respond('bar');
       $httpBackend.when('GET', 'http://example.com/trusted-template.html').respond('cross domain trusted template');
       $httpBackend.when('GET', '404.html').respond('not found');
-    };
+    }];
   }));
 
   afterEach(function() {
@@ -632,10 +632,10 @@ describe('$route', function() {
           deferB;
 
       module(function($provide, $routeProvider) {
-        $provide.factory('b', function($q) {
+        $provide.factory('b', ['$q', function($q) {
           deferB = $q.defer();
           return deferB.promise;
-        });
+        }]);
         $routeProvider.when('/path', { templateUrl: 'foo.html', resolve: {
           a: ['$q', function($q) {
             deferA = $q.defer();
@@ -670,10 +670,10 @@ describe('$route', function() {
 
       module(function($provide, $routeProvider) {
         $routeProvider.when('/path', { template: 'foo', resolve: {
-          a: function($q) {
+          a: ['$q', function($q) {
             deferA = $q.defer();
             return deferA.promise;
-          }
+          }]
         } });
       });
 
@@ -854,9 +854,9 @@ describe('$route', function() {
         $exceptionHandlerProvider.mode('log');
         $routeProvider.when('/locals', {
           resolve: {
-            a: function($q) {
+            a: ['$q', function($q) {
               throw myError;
-            }
+            }]
           }
         });
       });

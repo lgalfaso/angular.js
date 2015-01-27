@@ -3,10 +3,10 @@
 describe("ngAnimate", function() {
   var $originalAnimate;
   beforeEach(module(function($provide) {
-    $provide.decorator('$animate', function($delegate) {
+    $provide.decorator('$animate', ['$delegate', function($delegate) {
       $originalAnimate = $delegate;
       return $delegate;
-    });
+    }]);
   }));
   beforeEach(module('ngAnimate'));
   beforeEach(module('ngAnimateMock'));
@@ -107,14 +107,14 @@ describe("ngAnimate", function() {
     var ss, body;
     beforeEach(module(function() {
       body = jqLite(document.body);
-      return function($window, $document, $animate, $timeout, $rootScope) {
+      return ['$window', '$document', '$animate', '$timeout', '$rootScope', function($window, $document, $animate, $timeout, $rootScope) {
         ss = createMockStyleSheet($document, $window);
         try {
           $timeout.flush();
         } catch (e) {}
         $animate.enabled(true);
         $rootScope.$digest();
-      };
+      }];
     }));
 
     afterEach(function() {
@@ -290,7 +290,7 @@ describe("ngAnimate", function() {
                 }
               };
             });
-            $animateProvider.register('.custom-delay', function($timeout) {
+            $animateProvider.register('.custom-delay', ['$timeout', function($timeout) {
               function animate(element, done) {
                 done = arguments.length == 4 ? arguments[2] : done;
                 $timeout(done, 2000, false);
@@ -303,8 +303,8 @@ describe("ngAnimate", function() {
                 addClass: animate,
                 removeClass: animate
               };
-            });
-            $animateProvider.register('.custom-long-delay', function($timeout) {
+            }]);
+            $animateProvider.register('.custom-long-delay', ['$timeout', function($timeout) {
               function animate(element, done) {
                 done = arguments.length == 4 ? arguments[2] : done;
                 $timeout(done, 20000, false);
@@ -317,7 +317,7 @@ describe("ngAnimate", function() {
                 addClass: animate,
                 removeClass: animate
               };
-            });
+            }]);
             $animateProvider.register('.setup-memo', function() {
               return {
                 removeClass: function(element, className, done) {
@@ -326,7 +326,7 @@ describe("ngAnimate", function() {
                 }
               };
             });
-            return function($animate, $compile, $rootScope, $rootElement) {
+            return ['$animate', '$compile', '$rootScope', '$rootElement', function($animate, $compile, $rootScope, $rootElement) {
               element = $compile('<div></div>')($rootScope);
 
               forEach(['.ng-hide-add', '.ng-hide-remove', '.ng-enter', '.ng-leave', '.ng-move', '.my-inline-animation'], function(selector) {
@@ -340,7 +340,7 @@ describe("ngAnimate", function() {
 
               after   = $compile('<div></div>')($rootScope);
               $rootElement.append(element);
-            };
+            }];
           });
         });
 
@@ -1184,9 +1184,9 @@ describe("ngAnimate", function() {
 
         beforeEach(function() {
           module(function() {
-            return function(_$rootElement_) {
+            return ['$rootElement', function(_$rootElement_) {
               $rootElement = _$rootElement_;
-            };
+            }];
           });
         });
 
@@ -2102,7 +2102,7 @@ describe("ngAnimate", function() {
           it("should intelligently cancel former timeouts and close off a series of elements a final timeout", function() {
             var currentTimestamp, cancellations = 0;
             module(function($provide) {
-              $provide.decorator('$timeout', function($delegate) {
+              $provide.decorator('$timeout', ['$delegate', function($delegate) {
                 var _cancel = $delegate.cancel;
                 $delegate.cancel = function(timer) {
                   if (timer) {
@@ -2111,16 +2111,16 @@ describe("ngAnimate", function() {
                   }
                 };
                 return $delegate;
-              });
+              }]);
 
-              return function($sniffer) {
+              return ['$sniffer', function($sniffer) {
                 if ($sniffer.transitions) {
                   currentTimestamp = Date.now();
                   spyOn(Date,'now').andCallFake(function() {
                     return currentTimestamp;
                   });
                 }
-              };
+              }];
             });
             inject(function($animate, $rootScope, $compile, $sniffer, $timeout) {
               if (!$sniffer.transitions) return;
@@ -2487,20 +2487,20 @@ describe("ngAnimate", function() {
 
         beforeEach(function() {
           module(function($animateProvider) {
-            $animateProvider.register('.custom', function($timeout) {
+            $animateProvider.register('.custom', ['$timeout', function($timeout) {
               return {
                 removeClass: function(element, className, done) {
                   $timeout(done, 2000);
                 }
               };
-            });
-            $animateProvider.register('.other', function($timeout) {
+            }]);
+            $animateProvider.register('.other', ['$timeout',function($timeout) {
               return {
                 enter: function(element, done) {
                   $timeout(done, 10000);
                 }
               };
-            });
+            }]);
           });
         });
 
@@ -2906,7 +2906,7 @@ describe("ngAnimate", function() {
         var captured;
         beforeEach(function() {
           module(function($animateProvider) {
-            $animateProvider.register('.klassy', function($timeout) {
+            $animateProvider.register('.klassy', ['$timeout', function($timeout) {
               return {
                 addClass: function(element, className, done) {
                   captured = 'addClass-' + className;
@@ -2917,7 +2917,7 @@ describe("ngAnimate", function() {
                   $timeout(done, 3000, false);
                 }
               };
-            });
+            }]);
           });
         });
 
@@ -3322,11 +3322,11 @@ describe("ngAnimate", function() {
 
     var $rootElement, $document;
     beforeEach(module(function() {
-      return function(_$rootElement_, _$document_, $animate) {
+      return ['$rootElement', '$document', '$animate', function(_$rootElement_, _$document_, $animate) {
         $rootElement = _$rootElement_;
         $document = _$document_;
         $animate.enabled(true);
-      };
+      }];
     }));
 
     function html(element) {
@@ -3405,14 +3405,14 @@ describe("ngAnimate", function() {
 
     it("should run other defined animations inline with CSS3 animations", function() {
       module(function($animateProvider) {
-        $animateProvider.register('.custom', function($timeout) {
+        $animateProvider.register('.custom', ['$timeout', function($timeout) {
           return {
             enter: function(element, done) {
               element.addClass('i-was-animated');
               $timeout(done, 10, false);
             }
           };
-        });
+        }]);
       });
       inject(function($compile, $rootScope, $animate, $sniffer) {
 
@@ -3440,14 +3440,14 @@ describe("ngAnimate", function() {
 
     it("should properly cancel CSS transitions or animations if another animation is fired", function() {
       module(function($animateProvider) {
-        $animateProvider.register('.usurper', function($timeout) {
+        $animateProvider.register('.usurper', ['$timeout', function($timeout) {
           return {
             leave: function(element, done) {
               element.addClass('this-is-mine-now');
               $timeout(done, 55, false);
             }
           };
-        });
+        }]);
       });
       inject(function($compile, $rootScope, $animate, $sniffer, $timeout) {
         ss.addRule('.ng-enter', '-webkit-transition: 2s linear all;' +
@@ -4747,7 +4747,7 @@ describe("ngAnimate", function() {
 
     it('should not block keyframe animations at anytime before a followup JS animation occurs', function() {
       module(function($animateProvider) {
-        $animateProvider.register('.special', function($sniffer, $window) {
+        $animateProvider.register('.special', ['$sniffer', '$window', function($sniffer, $window) {
           var prop = $sniffer.vendorPrefix == 'Webkit' ? 'WebkitAnimation' : 'animation';
           return {
             beforeAddClass: function(element, className, done) {
@@ -4761,7 +4761,7 @@ describe("ngAnimate", function() {
               done();
             }
           };
-        });
+        }]);
       });
       inject(function($rootScope, $compile, $rootElement, $document, $animate, $sniffer, $timeout, $window) {
         if (!$sniffer.animations) return;
@@ -5173,9 +5173,9 @@ describe("ngAnimate", function() {
         spy = jasmine.createSpy();
         $animateProvider.register('.parent', mockAnimate);
         $animateProvider.register('.child', mockAnimate);
-        return function($animate) {
+        return ['$animate', function($animate) {
           $animate.enabled(true);
-        };
+        }];
 
         function mockAnimate() {
           return {

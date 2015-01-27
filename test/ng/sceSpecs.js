@@ -287,14 +287,14 @@ describe('SCE', function() {
   describe('$sceDelegate resource url policies', function() {
     function runTest(cfg, testFn) {
       return function() {
-        module(function($sceDelegateProvider) {
+        module(['$sceDelegateProvider', function($sceDelegateProvider) {
           if (cfg.whiteList !== undefined) {
             $sceDelegateProvider.resourceUrlWhitelist(cfg.whiteList);
           }
           if (cfg.blackList !== undefined) {
             $sceDelegateProvider.resourceUrlBlacklist(cfg.blackList);
           }
-        });
+        }]);
         inject(testFn);
       };
     }

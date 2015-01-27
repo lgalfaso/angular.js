@@ -236,10 +236,10 @@ describe('parser', function() {
     describe('csp: ' + cspEnabled, function() {
 
       beforeEach(module(function($provide) {
-        $provide.decorator('$sniffer', function($delegate) {
+        $provide.decorator('$sniffer', ['$delegate', function($delegate) {
           $delegate.csp = cspEnabled;
           return $delegate;
-        });
+        }]);
       }, provideLog));
 
       beforeEach(inject(function($rootScope) {

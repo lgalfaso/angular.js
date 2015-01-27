@@ -6,10 +6,10 @@ describe("$animate", function() {
     var element, $rootElement;
 
     beforeEach(module(function() {
-      return function($compile, _$rootElement_, $rootScope) {
+      return ['$compile', '$rootElement', '$rootScope', function($compile, _$rootElement_, $rootScope) {
         element = $compile('<div></div>')($rootScope);
         $rootElement = _$rootElement_;
-      };
+      }];
     }));
 
     it("should add element at the start of enter animation", inject(function($animate, $compile, $rootScope) {

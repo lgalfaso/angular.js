@@ -20,7 +20,7 @@ describe('$controller', function() {
         scope = {},
         ctrl;
 
-      $controllerProvider.register('FooCtrl', FooCtrl);
+      $controllerProvider.register('FooCtrl', ['$scope', FooCtrl]);
       ctrl = $controller('FooCtrl', {$scope: scope});
 
       expect(scope.foo).toBe('bar');
@@ -46,7 +46,7 @@ describe('$controller', function() {
           scope = {},
           ctrl;
 
-      $controllerProvider.register({FooCtrl: FooCtrl, BarCtrl: BarCtrl});
+      $controllerProvider.register({FooCtrl: ['$scope', FooCtrl], BarCtrl: ['$scope', BarCtrl]});
 
       ctrl = $controller('FooCtrl', {$scope: scope});
       expect(scope.foo).toBe('foo');
@@ -107,7 +107,7 @@ describe('$controller', function() {
       this.$http = $http;
     };
 
-    var ctrl = $controller(MyClass);
+    var ctrl = $controller(['$http', MyClass]);
     expect(ctrl.$http).toBe($http);
   }));
 
@@ -118,7 +118,7 @@ describe('$controller', function() {
     };
 
     var scope = {},
-        ctrl = $controller(MyClass, {$scope: scope});
+        ctrl = $controller(['$scope', MyClass], {$scope: scope});
 
     expect(ctrl.$scope).toBe(scope);
   });

@@ -84,7 +84,7 @@ describe('injector', function() {
 
 
   it('should provide the caller name for controllers', function(done) {
-    controllerProvider.register('myCtrl', function(idontexist) {});
+    controllerProvider.register('myCtrl', ['idontexist', function(idontexist) {}]);
     var $controller = injector.get('$controller');
     expect(function() {
       $controller('myCtrl', {$scope: {}});
@@ -104,8 +104,8 @@ describe('injector', function() {
 
 
   it('should provide path to the missing provider', function() {
-    providers('a', function(idontexist) {return 1;});
-    providers('b', function(a) {return 2;});
+    providers('a', ['idontexist', function(idontexist) {return 1;}]);
+    providers('b', ['a', function(a) {return 2;}]);
     expect(function() {
       injector.get('b');
     }).toThrowMinErr("$injector", "unpr", "Unknown provider: idontexistProvider <- idontexist <- a <- b");

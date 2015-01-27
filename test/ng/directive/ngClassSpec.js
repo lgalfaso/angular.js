@@ -432,7 +432,7 @@ describe('ngClass animations', function() {
         };
       });
 
-      return function($rootScope) {
+      return ['$rootScope', function($rootScope) {
         var before = $rootScope.$$postDigest;
         $rootScope.$$postDigest = function() {
           var args = arguments;
@@ -440,7 +440,7 @@ describe('ngClass animations', function() {
             before.apply($rootScope, args);
           });
         };
-      };
+      }];
     });
     inject(function($compile, $rootScope, $browser, $rootElement, $animate, $timeout, $document) {
 
